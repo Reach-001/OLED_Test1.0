@@ -129,14 +129,14 @@
  * 定时任务配置
  *===========================================================================*/
 #define TASK_PIT                PIT_TIM_A1          /* 任务调度定时器（TIMA0 已被电机 PWM 占用，改用 TIMA1） */
-#define TASK_PERIOD_MS          5                   /* 基础调度周期 (ms) */
+#define TASK_PERIOD_MS          1                   /* 基础调度周期 (ms) */
 
 /* 各任务执行周期。实际周期 = TASK_PERIOD_MS * TASK_xxx_PERIOD */
-#define TASK_TRACK_PERIOD       1                   /* 循迹采样: 5ms */
-#define TASK_CONTROL_PERIOD     2                   /* 控制计算: 10ms */
-#define TASK_DISPLAY_PERIOD     20                  /* 显示刷新: 100ms */
-#define TASK_UI_PERIOD          2                   /* UI 动画刷新: 10ms */
-#define TASK_KEY_PERIOD         4                   /* 按键扫描: 20ms */
+#define TASK_TRACK_PERIOD       2                   /* 循迹采样: 2ms */
+#define TASK_CONTROL_PERIOD     5                   /* 控制计算: 5ms */
+#define TASK_DISPLAY_PERIOD     50                  /* 显示刷新: 50ms */
+#define TASK_UI_PERIOD          20                  /* UI 动画刷新: 20ms (50Hz) */
+#define TASK_KEY_PERIOD         10                  /* 按键扫描: 10ms */
 /* 新增任务时，在这里添加 TASK_xxx_PERIOD，再到 app_task.h/c 和 main.c 接入。 */
 #define TASK_TICK_MAX           10000               /* 调度计数器回绕阈值 */
 

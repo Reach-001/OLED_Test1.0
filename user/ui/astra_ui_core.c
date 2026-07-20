@@ -72,6 +72,7 @@ void ad_astra()
 
 bool astra_is_in_user_item()
 {
+  if (astra_selector.selected_item == NULL) return false;
   return (astra_selector.selected_item->type == user_item
           && astra_to_user_item(astra_selector.selected_item)->in_user_item)
          ? true : false;
@@ -122,9 +123,9 @@ void astra_refresh_camera_position()
   if (astra_camera.selector->y_selector_trg + 20 + astra_camera.y_camera_trg > SCREEN_HEIGHT)
     astra_camera.y_camera_trg = SCREEN_HEIGHT - astra_camera.selector->y_selector_trg - 20;
 
-  /* 向上超出屏幕: 相机下移 */
-  if (astra_camera.selector->y_selector_trg + astra_camera.y_camera_trg < 0)
-    astra_camera.y_camera_trg = 0 - astra_camera.selector->y_selector_trg + LIST_FONT_TOP_MARGIN;
+  /* 向上进入标题栏: 相机下移 */
+  if (astra_camera.selector->y_selector_trg + astra_camera.y_camera_trg < LIST_INFO_BAR_HEIGHT)
+    astra_camera.y_camera_trg = LIST_INFO_BAR_HEIGHT - astra_camera.selector->y_selector_trg;
 
   astra_animation(&astra_camera.x_camera, astra_camera.x_camera_trg, 96);
   astra_animation(&astra_camera.y_camera, astra_camera.y_camera_trg, 96);
@@ -148,13 +149,22 @@ void astra_init_list()
 {
   if (astra_get_root_list()->child_num == 0) return;
 
-  /* 入场动画: 所有子项从 0 开始滑入 */
+  /* 根菜单初始化直接对齐目标位置，避免上电首帧从屏幕外跳入。 */
   for (uint8_t i = 0; i < astra_get_root_list()->child_num; i++)
-    astra_get_root_list()->child_list_item[i]->y_list_item = 0;
+    astra_get_root_list()->child_list_item[i]->y_list_item = astra_get_root_list()->child_list_item[i]->y_list_item_trg;
   astra_selector.selected_index = 0;
   astra_selector.selected_item = astra_get_root_list()->child_list_item[0];
-  astra_selector.y_selector = OLED_HEIGHT;
-  astra_selector.h_selector = OLED_HEIGHT;
+  astra_set_font(astra_default_font);
+  astra_selector.y_selector = astra_selector.selected_item->y_list_item_trg - oled_get_str_height() + 1;
+  astra_selector.y_selector_trg = astra_selector.y_selector;
+  astra_selector.w_selector = oled_get_UTF8_width(astra_selector.selected_item->content) + UI_SELECTOR_TEXT_PADDING;
+  astra_selector.w_selector_trg = astra_selector.w_selector;
+  astra_selector.h_selector = UI_SELECTOR_HEIGHT;
+  astra_selector.h_selector_trg = astra_selector.h_selector;
+  astra_camera.x_camera = 0;
+  astra_camera.x_camera_trg = 0;
+  astra_camera.y_camera = 0;
+  astra_camera.y_camera_trg = 0;
 }
 
 void astra_init_core()
@@ -189,12 +199,12 @@ void astra_refresh_selector_position()
   /* 选择器宽度: 开关/滑块占满, 普通项按文字宽度 */
   if (astra_selector.selected_item->type == switch_item
       || astra_selector.selected_item->type == slider_item)
-    astra_selector.w_selector_trg = OLED_WIDTH - 40;
+    astra_selector.w_selector_trg = OLED_WIDTH - UI_SELECTOR_FULL_MARGIN;
   else
-    astra_selector.w_selector_trg = oled_get_UTF8_width(astra_selector.selected_item->content) + 24;
+    astra_selector.w_selector_trg = oled_get_UTF8_width(astra_selector.selected_item->content) + UI_SELECTOR_TEXT_PADDING;
 
   /* 选择器高度: 字体高度 + 上下边距 */
-  astra_selector.h_selector_trg = 20;
+  astra_selector.h_selector_trg = UI_SELECTOR_HEIGHT;
 
   astra_animation(&astra_selector.y_selector, astra_selector.y_selector_trg, 92);
   astra_animation(&astra_selector.w_selector, astra_selector.w_selector_trg, 92);
@@ -227,6 +237,7 @@ void astra_ui_widget_core()
 void astra_ui_main_core()
 {
   if (!in_astra) return;
+  if (astra_selector.selected_item == NULL) return;
 
   /* 1. User Item 切换逻辑 */
   if (astra_selector.selected_item->type == user_item
@@ -261,10 +272,10 @@ void astra_ui_main_core()
   }
   else
   {
-    /* 正常列表模式: 刷新相机 → 列表项 → 选择器 → 绘制 */
+    /* 正常列表模式: 先更新选择器目标，再用当前目标约束相机。 */
+    astra_refresh_selector_position();
     astra_refresh_camera_position();
     astra_refresh_main_core_position();
-    astra_refresh_selector_position();
     astra_draw_list();
   }
 

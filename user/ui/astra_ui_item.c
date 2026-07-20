@@ -18,28 +18,28 @@ void astra_set_font(const void *_font)
 /* --- 信息栏 --- */
 astra_info_bar_t astra_info_bar = {0, 1, 0 - 2 * INFO_BAR_HEIGHT, 0 - 2 * INFO_BAR_HEIGHT, 80, 80, false, 0, 1};
 
+/* 信息栏实际可见区域高度 = INFO_BAR_HEIGHT + 4 (含上下边线/阴影)。
+ * 这里把整块提示框放到屏幕中线。 */
+#define INFO_BAR_TARGET_Y  ((OLED_HEIGHT - (INFO_BAR_HEIGHT + 4)) / 2 + 4)
+
 void astra_push_info_bar(char *_content, const uint16_t _span)
 {
   astra_info_bar.time = get_ticks();
   astra_info_bar.content = _content;
   astra_info_bar.span = _span;
-  astra_info_bar.is_running = false;
-
-  if (!astra_info_bar.is_running)
-  {
-    astra_info_bar.time_start = get_ticks();
-    astra_info_bar.y_info_bar_trg = 0;
-    astra_info_bar.is_running = true;
-  }
+  /* 每次调用都重新开始动画，直接覆盖旧状态 */
+  astra_info_bar.time_start = get_ticks();
+  astra_info_bar.y_info_bar_trg = INFO_BAR_TARGET_Y;
+  astra_info_bar.is_running = true;
 
   st7789_set_font(astra_default_font);
   astra_info_bar.w_info_bar_trg = oled_get_UTF8_width(astra_info_bar.content) + INFO_BAR_OFFSET;
 }
 
 /* --- 弹窗 --- */
-/* 弹窗初始位置: 收在屏幕上方, 弹出时下滑到屏幕 30% 位置 */
+/* 弹窗初始位置: 收在屏幕上方, 弹出时下滑到屏幕 40% 位置 */
 #define POP_UP_INIT_Y  (0 - 2 * POP_UP_HEIGHT)
-#define POP_UP_TARGET_Y (OLED_HEIGHT * 30 / 100)  /* 172×0.3 ≈ 52 */
+#define POP_UP_TARGET_Y (OLED_HEIGHT * 40 / 100)
 
 astra_pop_up_t astra_pop_up = {0, 1, POP_UP_INIT_Y, POP_UP_INIT_Y, 80, 80, false, 0, 1};
 
@@ -48,14 +48,10 @@ void astra_push_pop_up(char *_content, const uint16_t _span)
   astra_pop_up.time = get_ticks();
   astra_pop_up.content = _content;
   astra_pop_up.span = _span;
-  astra_pop_up.is_running = false;
-
-  if (!astra_pop_up.is_running)
-  {
-    astra_pop_up.time_start = get_ticks();
-    astra_pop_up.y_pop_up_trg = POP_UP_TARGET_Y;
-    astra_pop_up.is_running = true;
-  }
+  /* 每次调用都重新开始动画，直接覆盖旧状态 */
+  astra_pop_up.time_start = get_ticks();
+  astra_pop_up.y_pop_up_trg = POP_UP_TARGET_Y;
+  astra_pop_up.is_running = true;
 
   st7789_set_font(astra_default_font);
   astra_pop_up.w_pop_up_trg = oled_get_UTF8_width(astra_pop_up.content) + POP_UP_OFFSET;
@@ -304,7 +300,8 @@ void astra_selector_jump_to_selected_item()
   astra_refresh_list_value = true;
 
   for (uint8_t i = 0; i < astra_selector.selected_item->child_num; i++)
-    astra_selector.selected_item->child_list_item[i]->y_list_item = 0;
+    astra_selector.selected_item->child_list_item[i]->y_list_item =
+      astra_selector.selected_item->child_list_item[i]->y_list_item_trg;
 
   astra_selector.selected_index = 0;
   astra_selector.selected_item = astra_selector.selected_item->child_list_item[0];
@@ -340,7 +337,8 @@ void astra_selector_exit_current_item()
   }
 
   for (uint8_t i = 0; i < astra_selector.selected_item->parent->parent->child_num; i++)
-      astra_selector.selected_item->parent->parent->child_list_item[i]->y_list_item = 0;
+      astra_selector.selected_item->parent->parent->child_list_item[i]->y_list_item =
+        astra_selector.selected_item->parent->parent->child_list_item[i]->y_list_item_trg;
 
   uint8_t _temp_index = 0;
   for (uint8_t i = 0; i < astra_selector.selected_item->parent->parent->child_num; i++)

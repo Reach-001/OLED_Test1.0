@@ -305,6 +305,9 @@ void astra_selector_jump_to_selected_item()
 
   astra_selector.selected_index = 0;
   astra_selector.selected_item = astra_selector.selected_item->child_list_item[0];
+  /* 切换列表时重置相机偏移，防止旧偏移把顶部条目推到屏幕外 */
+  astra_camera.y_camera = 0;
+  astra_camera.y_camera_trg = 0;
 }
 
 void astra_selector_exit_current_item()
@@ -351,6 +354,9 @@ void astra_selector_exit_current_item()
   }
   astra_selector.selected_index = _temp_index;
   astra_selector.selected_item = astra_selector.selected_item->parent;
+  /* 返回父列表时重置相机偏移，防止子菜单留存的偏移把父菜单推出屏幕 */
+  astra_camera.y_camera = 0;
+  astra_camera.y_camera_trg = 0;
 }
 
 /* --- 列表管理 --- */

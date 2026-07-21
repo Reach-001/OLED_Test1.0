@@ -533,69 +533,18 @@ void astra_draw_list_icon(astra_list_item_icon_t icon, uint16_t x, uint16_t y)
 }
 
 /*===========================================================================
- * 选择器绘制 — u8g2 图案模式思想，适配 RGB565
+ * 选择器绘制 — RGB565 纯色圆角填充
  *
- * 原理: 1-bit 帧缓冲的 fb_pixel(color>0) 只写 '1' 不写 '0'。
- *       先画 items(白字白控件) → 再画 selector(棋盘格图案)。
- *       图案只增加像素, 已有白字保持白字。blit 后 0=黑 1=白,
- *       高密度棋盘格在 RGB565 屏上视觉融合为灰色, 白字自然透出。
+ * 主体内容在1-bit帧缓冲画好发送后, 选择器在直写层用真灰色
+ * 圆角填充覆在最上面。白字在灰底上自然可读, 不需要图案技巧。
  *===========================================================================*/
 
 void astra_draw_selector()
 {
-  int16_t _xs = astra_camera.x_camera + LIST_ITEM_LEFT_MARGIN;
-  int16_t _ys = astra_selector.y_selector + astra_camera.y_camera;
-  int16_t _w  = (int16_t)astra_selector.w_selector;
-  int16_t _h  = (int16_t)astra_selector.h_selector;
-  int16_t _r  = astra_selector_effective_radius(_w, _h);
-
-  if (_ys <= LIST_INFO_BAR_HEIGHT) return;
-
-#if UI_SELECTOR_FILL_ENABLE
-  /* 棋盘格图案填充: 隔列隔行写白像素 = 50% 密度 = 视觉灰色。
-   * 只写 1(oled_draw_pixel 用非0颜色), 已有白字不受影响。 */
-  for (int16_t py = 0; py < _h; py++)
-  {
-    int16_t row_top    = _ys + py;
-    int16_t row_offset = (py < _r) ? (_r - 1 - py)
-                       : (py >= _h - _r) ? (py - (_h - _r))
-                       : -1;
-
-    for (int16_t px = 0; px < _w; px++)
-    {
-      /* 棋盘格: (px+py) & 1 交替 */
-      if ((px + py) & 1) continue;
-
-      /* 圆角裁剪: 四角超出圆半径的像素跳过 */
-      if (row_offset >= 0)
-      {
-        int16_t col_offset = (px < _r) ? (_r - 1 - px)
-                           : (px >= _w - _r) ? (px - (_w - _r))
-                           : -1;
-        if (col_offset >= 0)
-        {
-          int16_t dist2 = row_offset * row_offset + col_offset * col_offset;
-          if (dist2 > _r * _r + _r) continue;
-        }
-      }
-
-      oled_draw_pixel(_xs + px, row_top);
-    }
-  }
-
-  /* 右侧棋盘格过渡 8px */
-  for (int16_t px = _w; px < _w + 8; px += 2)
-    for (int16_t py = 0; py < _h; py++)
-      if ((px + py) % 2 == 0)
-        oled_draw_pixel(_xs + px, _ys + py);
-
-  /* 白色圆角细线边框 */
-  oled_set_draw_color(UI_SELECTOR_FRAME_COLOR);
-  oled_draw_R_frame(_xs, _ys, _w, _h, _r);
-#else
-  oled_set_draw_color(UI_SELECTOR_FRAME_COLOR);
-  oled_draw_R_frame(_xs, _ys, _w, _h, _r);
-#endif
+  /* 选择器绘制完全移至 astra_draw_color_overlay() 直写层。
+   * 帧缓冲层不做任何操作, 避免1-bit映射的纯白遮挡内容。 */
+  (void)astra_camera;
+  (void)astra_selector;
 }
 
 void astra_draw_color_overlay()
@@ -605,6 +554,28 @@ void astra_draw_color_overlay()
     return;
 
   st7789_set_buffer_mode(0);
+
+  /* ---- 选择器: RGB565 纯色圆角填充 + 白边框 ---- */
+#if UI_SELECTOR_FILL_ENABLE
+  {
+    int16_t _xs = LIST_ITEM_LEFT_MARGIN;
+    int16_t _ys = astra_selector.y_selector + astra_camera.y_camera;
+    int16_t _w  = (int16_t)astra_selector.w_selector;
+    int16_t _h  = (int16_t)astra_selector.h_selector;
+    int16_t _r  = astra_selector_effective_radius(_w, _h);
+
+    if (_ys > LIST_INFO_BAR_HEIGHT)
+    {
+      /* 灰色圆角填充 */
+      oled_set_draw_color(UI_COLOR_GRAY);
+      oled_draw_R_box(_xs, _ys, _w, _h, _r);
+
+      /* 白色细线边框 */
+      oled_set_draw_color(UI_SELECTOR_FRAME_COLOR);
+      oled_draw_R_frame(_xs, _ys, _w, _h, _r);
+    }
+  }
+#endif
 
 #if UI_TITLE_ENABLE
   oled_set_draw_color(UI_TITLE_LINE_COLOR);
@@ -645,6 +616,6 @@ void astra_draw_widget()
 void astra_draw_list()
 {
   astra_draw_list_appearance();
-  astra_draw_list_item();      /* 先画内容 (白字白控件) */
-  astra_draw_selector();       /* 后画选择器 (棋盘格图案叠在上面) */
+  astra_draw_list_item();
+  /* 选择器已移至 astra_draw_color_overlay() 直写层绘制 */
 }

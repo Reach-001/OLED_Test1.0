@@ -565,7 +565,7 @@ void astra_draw_color_overlay()
     return;
   }
 
-  /* ---- 选择器: RGB565 纯色圆角填充 + 白边框 ---- */
+  /* ---- 选择器: RGB565 纯色圆角边框 (无填充, 不遮挡内容) ---- */
 #if UI_SELECTOR_FILL_ENABLE
   {
     int16_t _xs = LIST_ITEM_LEFT_MARGIN;
@@ -576,11 +576,6 @@ void astra_draw_color_overlay()
 
     if (_ys > LIST_INFO_BAR_HEIGHT)
     {
-      /* 灰色圆角填充 */
-      oled_set_draw_color(UI_COLOR_GRAY);
-      oled_draw_R_box(_xs, _ys, _w, _h, _r);
-
-      /* 白色细线边框 */
       oled_set_draw_color(UI_SELECTOR_FRAME_COLOR);
       oled_draw_R_frame(_xs, _ys, _w, _h, _r);
     }

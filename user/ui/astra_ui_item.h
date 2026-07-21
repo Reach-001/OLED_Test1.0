@@ -50,12 +50,16 @@ typedef struct astra_pop_up_t
 extern astra_pop_up_t astra_pop_up;
 extern void astra_push_pop_up(char *_content, const uint16_t _span);
 
-/*** 列表项 — 适配 320×172 横屏 (16px 字体) ***/
+/*** 列表项 — 跟随当前 ST7789 逻辑分辨率 ***/
 #define MAX_LIST_CHILD_NUM 10
 #define MAX_LIST_LAYER 10
-#define SCREEN_HEIGHT 172        /**< 屏幕逻辑高度 (横屏)              */
-#define SCREEN_WIDTH  320        /**< 屏幕逻辑宽度 (横屏)              */
-#define LIST_ITEM_SPACING 35     /**< 列表项间距 (原 15, ×2.3)        */
+#define SCREEN_HEIGHT OLED_HEIGHT
+#define SCREEN_WIDTH  OLED_WIDTH
+#if OLED_WIDTH >= 300
+#define LIST_ITEM_SPACING 35
+#else
+#define LIST_ITEM_SPACING 24
+#endif
 #define LIST_ITEM_OFFSET 12      /**< 列表项偏移 (原 8)                */
 #define LIST_ITEM_LEFT_MARGIN 8  /**< 列表项左缩进 (原 4)              */
 #define LIST_ITEM_RIGHT_MARGIN 50 /**< 列表项右缩进 (原 20, ×2.5)     */

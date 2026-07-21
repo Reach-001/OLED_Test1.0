@@ -194,20 +194,19 @@ void astra_refresh_selector_position()
 {
   astra_set_font(astra_default_font);
 
-  /* 选择器 Y: 文字在框内居中 */
+  /* 选择器 Y: 文字上方留2px, 框内居中 */
   astra_selector.y_selector_trg = astra_selector.selected_item->y_list_item_trg
                                   - oled_get_str_height() - 1;
 
-  /* 选择器宽度: 开关/滑块占满, 普通项按文字宽度 */
-  if (astra_selector.selected_item->type == switch_item
+  /* 宽度 */
+  astra_selector.w_selector_trg = (astra_selector.selected_item->type == switch_item
       || astra_selector.selected_item->type == slider_item)
-    astra_selector.w_selector_trg = OLED_WIDTH - UI_SELECTOR_FULL_MARGIN;
-  else
-    astra_selector.w_selector_trg = oled_get_UTF8_width(astra_selector.selected_item->content) + UI_SELECTOR_TEXT_PADDING;
+    ? OLED_WIDTH - UI_SELECTOR_FULL_MARGIN
+    : oled_get_UTF8_width(astra_selector.selected_item->content) + UI_SELECTOR_TEXT_PADDING;
 
-  /* 选择器高度: 滑块项加高覆盖刻度线 */
+  /* 高度: 普通18, 滑块+6覆盖刻度线 */
   astra_selector.h_selector_trg = (astra_selector.selected_item->type == slider_item)
-                                  ? UI_SELECTOR_HEIGHT + 6 : UI_SELECTOR_HEIGHT;
+    ? UI_SELECTOR_HEIGHT + 8 : UI_SELECTOR_HEIGHT;
 
   astra_animation(&astra_selector.y_selector, astra_selector.y_selector_trg, 92);
   astra_animation(&astra_selector.w_selector, astra_selector.w_selector_trg, 92);

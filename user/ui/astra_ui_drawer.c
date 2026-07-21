@@ -468,8 +468,18 @@ void astra_draw_list_item()
     /* 绘制文字内容 (所有类型共用) */
     astra_set_font(astra_default_font);
     if (_row_visible)
+    {
+#if UI_SELECTOR_FILL_ENABLE
+      /* 实体填充模式下，选中项反色显示（白底黑字） */
+      if (astra_selector.selected_item->parent->child_list_item[i]
+          == astra_selector.selected_item)
+        oled_set_draw_color(UI_COLOR_BLACK);
+      else
+        oled_set_draw_color(UI_LIST_TEXT_COLOR);
+#endif
       oled_draw_UTF8(10 + _x_item, _baseline,
                      astra_selector.selected_item->parent->child_list_item[i]->content);
+    }
   }
 
   astra_refresh_list_value = false;
@@ -543,9 +553,17 @@ void astra_draw_selector()
 
   if (_ys <= LIST_INFO_BAR_HEIGHT) return;
 
+#if UI_SELECTOR_FILL_ENABLE
+  /* 实体填充（1-bit 帧缓冲下为非黑色 = 白底），搭配反色文字 */
+  oled_set_draw_color(UI_SELECTOR_FILL_COLOR);
+  oled_draw_R_box(_xs, _ys,
+                  astra_selector.w_selector, astra_selector.h_selector, _r);
+#else
+  /* 仅线框模式 */
   oled_set_draw_color(UI_SELECTOR_FRAME_COLOR);
   oled_draw_R_frame(_xs, _ys,
                     astra_selector.w_selector, astra_selector.h_selector, _r);
+#endif
 }
 
 void astra_draw_color_overlay()

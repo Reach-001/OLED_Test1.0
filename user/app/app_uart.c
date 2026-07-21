@@ -14,7 +14,7 @@
 #endif
 
 static app_uart_state_t s_uart[APP_UART_CHANNEL_NUM] = {
-    { false, false, UART_0, UART0_TX_A10,       UART0_RX_A11,       APP_UART_BAUD, 0, 0 },
+    { true,  true,  UART_0, UART0_TX_A10,       UART0_RX_A11,       APP_UART_BAUD, 0, 0 },  /* UART0 系统已启 (debug) */
     { false, false, UART_1, WIRELESS_UART_TX,   WIRELESS_UART_RX,   APP_UART_BAUD, 0, 0 },
     { false, false, UART_2, UART2_TX_A21,       UART2_RX_A22,       APP_UART_BAUD, 0, 0 },
     { false, false, UART_3, UART3_TX_B12,       UART3_RX_B13,       APP_UART_BAUD, 0, 0 },

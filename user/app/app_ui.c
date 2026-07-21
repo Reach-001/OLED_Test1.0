@@ -115,7 +115,7 @@ static int16_t s_ui_speed_ki = (int16_t)PID_SPEED_KI;
  * UART 四通道 — 开关 + 长按进详情
  *===========================================================================*/
 
-static bool  s_uart_en[4] = { false, false, false, false };
+static bool  s_uart_en[4] = { true, false, false, false };  /* UART0 默认开 (debug UART) */
 static uint8 s_uart_no    = 0;
 
 /* ---- 选中开关时设置通道号 (init_function) ---- */

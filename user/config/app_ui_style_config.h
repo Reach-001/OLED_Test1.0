@@ -43,15 +43,15 @@
 #define UI_TITLE_ENABLE            1   /**< 标题栏启用标志（1=启用，0=禁用） */
 #define UI_TITLE_TEXT_COLOR        3  /**< 标题文字颜色 */
 #define UI_TITLE_LINE_COLOR        4   /**< 标题栏底部横线颜色 */
-#define UI_TITLE_AREA_HEIGHT       20               /**< 标题栏占用高度 */
-#define UI_TITLE_BASELINE_Y        15               /**< 标题文字基线纵坐标（相对于屏幕顶部） */
+#define UI_TITLE_AREA_HEIGHT       24               /**< 标题栏占用高度（含线条下方间距） */
+#define UI_TITLE_BASELINE_Y        16               /**< 标题文字基线纵坐标（相对于屏幕顶部） */
 
 /*===========================================================================
  * 列表布局、文字与滚动条配置
  *=========================================================================*/
 
 #define UI_LIST_TEXT_COLOR         UI_COLOR_WHITE   /**< 列表项文字颜色 */
-#define UI_LIST_TOP_MARGIN         22               /**< 首个列表项基线前的顶部边距 */
+#define UI_LIST_TOP_MARGIN         26               /**< 首个列表项基线前的顶部边距 (留出选择框空间) */
 #define UI_LIST_ITEM_SPACING_147   24               /**< 320x172 屏列表项间距 */
 #define UI_LIST_ITEM_SPACING_114   18               /**< 240x135 屏列表项间距 */
 #define UI_LIST_ITEM_LEFT_MARGIN   8                /**< 列表项左边距 */
@@ -69,7 +69,7 @@
 #define UI_SELECTOR_HEIGHT         18               /**< 选择框高度 */
 #define UI_SELECTOR_TEXT_PADDING   20               /**< 普通选项选择框水平内边距 */
 #define UI_SELECTOR_FULL_MARGIN    32               /**< 开关/滑块选择框左右总预留 */
-#define UI_SELECTOR_FRAME_COLOR    UI_COLOR_WHITE   /**< 选择框边框颜色 */
+#define UI_SELECTOR_FRAME_COLOR    UI_COLOR_MINT    /**< 选择框边框颜色 (RGB565直写, 薄荷绿醒目) */
 #define UI_SELECTOR_FILL_ENABLE    1                /**< 选择框棋盘格填充 (1=图案灰底, 0=仅线框) */
 
 /*===========================================================================

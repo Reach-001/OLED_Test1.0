@@ -270,6 +270,14 @@ void astra_ui_main_core()
         if (_selected_user_item->exit_function != NULL)
             _selected_user_item->exit_function();
         _selected_user_item->in_user_item = 0;
+
+        /* 父列表只有一个子项时，退场动画结束直接跳到祖父（跳过中间空壳层） */
+        if (astra_selector.selected_item->parent != NULL
+            && astra_selector.selected_item->parent->child_num == 1
+            && astra_selector.selected_item->parent->parent != NULL)
+        {
+            astra_selector_exit_current_item();
+        }
     }
   }
   else

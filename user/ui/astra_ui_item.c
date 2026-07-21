@@ -363,17 +363,39 @@ void astra_selector_exit_current_item()
     return;
   }
 
-  /* 根层级或 parent 无效：忽略返回操作 */
-  if (astra_selector.selected_item->parent == NULL
-      || astra_selector.selected_item->parent->parent == NULL)
+  astra_list_item_t *parent = astra_selector.selected_item->parent;
+  if (parent == NULL) return;
+
+  /* 父节点只有一个子项，跳过中间层直接返回祖父 */
+  if (parent->child_num == 1 && parent->parent != NULL)
   {
+    astra_list_item_t *_grandparent = parent->parent;
+    astra_refresh_list_value = true;
+
+    for (uint8_t i = 0; i < _grandparent->child_num; i++)
+        _grandparent->child_list_item[i]->y_list_item =
+          _grandparent->child_list_item[i]->y_list_item_trg;
+
+    uint8_t _temp_index = 0;
+    for (uint8_t i = 0; i < _grandparent->child_num; i++)
+    {
+      if (_grandparent->child_list_item[i] == parent)
+      { _temp_index = i; break; }
+    }
+    astra_selector.selected_index = _temp_index;
+    astra_selector.selected_item = parent;
+    astra_camera.y_camera = 0;
+    astra_camera.y_camera_trg = 0;
     return;
   }
+
+  /* 根层级或 parent 无效：忽略返回操作 */
+  if (parent->parent == NULL) return;
 
   astra_refresh_list_value = true;
 
   /* 恢复父级列表项位置 */
-  astra_list_item_t *_grandparent = astra_selector.selected_item->parent->parent;
+  astra_list_item_t *_grandparent = parent->parent;
   for (uint8_t i = 0; i < _grandparent->child_num; i++)
       _grandparent->child_list_item[i]->y_list_item =
         _grandparent->child_list_item[i]->y_list_item_trg;

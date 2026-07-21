@@ -453,11 +453,9 @@ void astra_draw_list_item()
           static bool _visible = false;
           uint32_t _tick = get_ticks();
           if (_visible) {
-            oled_set_draw_color(_is_sel ? UI_COLOR_BLACK : UI_SLIDER_VALUE_BOX_COLOR);
-            oled_draw_R_box(_vx - 2, _y_item - 2, _vw + 8, 16, 1);
+            oled_set_draw_color(_c);
+            oled_draw_str(_vx + 2, _baseline, _val_str);
           }
-          oled_set_draw_color(UI_COLOR_BLACK);
-          oled_draw_str(_vx + 2, _baseline, _val_str);
           if (_tick - _last_tick >= 500) { _visible = !_visible; _last_tick = _tick; }
         }
         else

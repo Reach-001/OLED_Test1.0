@@ -22,8 +22,8 @@ static volatile uint32 s_task_ms = 0;
 /* 系统状态 */
 static sys_state_enum s_sys_state = SYS_STATE_IDLE;
 
-/* 循迹数据 */
-static track_data_t s_track_data;
+/* 循迹数据（非 static，允许 UI 等模块读取） */
+track_data_t s_track_data;
 
 /* 编码器数据 */
 static int16 s_encoder_l = 0;
@@ -84,6 +84,11 @@ void task_timer_callback(void)
     {
         s_task_tick = 0;
     }
+}
+
+const track_data_t* task_get_track_data(void)
+{
+    return &s_track_data;
 }
 
 uint32 task_get_ms(void)

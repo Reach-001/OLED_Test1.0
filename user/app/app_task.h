@@ -10,6 +10,7 @@
 #define _APP_TASK_H_
 
 #include "board_config.h"
+#include "bsp_track.h"
 
 /* 任务标志位。
  * 新增任务时，在结构体里加一个 uint8 标志，例如 uint8 uart;
@@ -73,6 +74,12 @@ void task_ui(void);
  * @brief   按键处理任务
  */
 void task_key(void);
+
+/**
+ * @brief   获取循迹传感器数据指针（供 UI 等模块读取）
+ * @return  指向最新 track_data 的只读指针
+ */
+const track_data_t* task_get_track_data(void);
 
 /**
  * @brief   获取系统毫秒计时

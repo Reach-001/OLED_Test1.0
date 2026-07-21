@@ -440,29 +440,38 @@ void astra_draw_list_item()
       {
         astra_draw_list_icon(astra_selector.selected_item->parent->child_list_item[i]->icon, _x_item, _y_item);
 
-        /* 数值显示在行右侧 */
+        /* 比例条: icon 右侧 → 数值左侧 */
         char _val_str[8] = {};
         sprintf(_val_str, "%d", *_sl->value);
-        int16_t _vw = (int16_t)(strlen(_val_str) * 8);
-        int16_t _vx = OLED_WIDTH - LIST_ITEM_RIGHT_MARGIN - _vw + 10;
+        int16_t _vw  = (int16_t)(strlen(_val_str) * 8);
+        int16_t _vx  = OLED_WIDTH - LIST_ITEM_RIGHT_MARGIN - _vw + 10;
+        int16_t bar_x = 24;
+        int16_t bar_w = _vx - bar_x - 8;
 
+        int16_t fill;
+        if (_sl->value_max > _sl->value_min)
+          fill = (int16_t)((int32_t)(*_sl->value - _sl->value_min) * bar_w
+                         / (_sl->value_max - _sl->value_min));
+        else fill = bar_w / 2;
+        if (fill < 0) fill = 0; if (fill > bar_w) fill = bar_w;
+
+        int16_t bar_h = 8;
+        int16_t bar_y = _baseline - oled_get_str_height()/2 + (oled_get_str_height() - bar_h)/2;
+
+        /* 空轨道 */
+        oled_set_draw_color(UI_COLOR_GRAY);
+        oled_draw_box(bar_x, bar_y, bar_w, bar_h);
+        /* 填充 */
+        oled_set_draw_color(_is_sel ? UI_COLOR_BLACK : UI_LIST_TEXT_COLOR);
+        oled_draw_box(bar_x, bar_y, fill, bar_h);
+        /* 边框 */
+        oled_set_draw_color(_c);
+        oled_draw_frame(bar_x - 1, bar_y - 1, bar_w + 2, bar_h + 2);
+
+        /* 数值 */
         st7789_set_font((const void*)&font_8x16);
-        if (_sl->is_confirmed)
-        {
-          static uint32_t _last_tick = 0;
-          static bool _visible = false;
-          uint32_t _tick = get_ticks();
-          if (_visible) {
-            oled_set_draw_color(_c);
-            oled_draw_str(_vx + 2, _baseline, _val_str);
-          }
-          if (_tick - _last_tick >= 500) { _visible = !_visible; _last_tick = _tick; }
-        }
-        else
-        {
-          oled_set_draw_color(_c);
-          oled_draw_str(_vx + 2, _baseline, _val_str);
-        }
+        oled_set_draw_color(_c);
+        oled_draw_str(_vx + 2, _baseline, _val_str);
         st7789_set_font(astra_default_font);
       }
     }

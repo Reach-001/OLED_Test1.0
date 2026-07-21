@@ -437,7 +437,13 @@ bool astra_push_item_to_list(astra_list_item_t *_parent, astra_list_item_t *_chi
   if (_parent->child_num == 0)
     _child->y_list_item_trg = oled_get_str_height() + LIST_FONT_TOP_MARGIN - 1;
   else
-    _child->y_list_item_trg = _parent->child_list_item[_parent->child_num - 1]->y_list_item_trg + LIST_ITEM_SPACING;
+  {
+    int16_t _extra = 0;
+    if (_parent->child_list_item[_parent->child_num - 1]->type == slider_item)
+      _extra = 10;   /* 滑块占两行文字+比例条, 多留间距 */
+    _child->y_list_item_trg = _parent->child_list_item[_parent->child_num - 1]->y_list_item_trg
+                            + LIST_ITEM_SPACING + _extra;
+  }
 
   if (_parent->layer == 0 && _parent->child_num == 0)
   {

@@ -119,6 +119,8 @@ void astra_refresh_pop_up()
 
 void astra_refresh_camera_position()
 {
+  if (astra_camera.selector == NULL) return;
+
   /* 向下超出屏幕: 相机上移 */
   if (astra_camera.selector->y_selector_trg + 20 + astra_camera.y_camera_trg > SCREEN_HEIGHT)
     astra_camera.y_camera_trg = SCREEN_HEIGHT - astra_camera.selector->y_selector_trg - 20;

@@ -40,7 +40,7 @@
  * 标题栏配置
  *=========================================================================*/
 
-#define UI_TITLE_ENABLE            1   /**< 标题栏启用标志（1=启用，0=禁用） */
+#define UI_TITLE_ENABLE            0   /**< 标题栏启用标志（1=启用，0=禁用） */
 #define UI_TITLE_TEXT_COLOR        UI_COLOR_WHITE   /**< 标题文字颜色 */
 #define UI_TITLE_LINE_COLOR        UI_COLOR_AMBER   /**< 标题栏底部横线颜色 */
 #define UI_TITLE_AREA_HEIGHT       20               /**< 标题栏占用高度 */

@@ -201,6 +201,7 @@ bool astra_refresh_list_value = true;
 
 void astra_selector_go_next_item()
 {
+  if (astra_selector.selected_item == NULL) return;
   if (astra_selector.selected_item->type == slider_item && astra_to_slider_item(astra_selector.selected_item)->is_confirmed)
   {
     astra_slider_item_t* _selected_slider_item = astra_to_slider_item(astra_selector.selected_item);
@@ -226,6 +227,7 @@ void astra_selector_go_next_item()
 
 void astra_selector_go_prev_item()
 {
+  if (astra_selector.selected_item == NULL) return;
   if (astra_selector.selected_item->type == slider_item && astra_to_slider_item(astra_selector.selected_item)->is_confirmed)
   {
     astra_slider_item_t* _selected_slider_item = astra_to_slider_item(astra_selector.selected_item);
@@ -254,6 +256,7 @@ bool astra_exit_animation_finished = true;
 void astra_selector_jump_to_selected_item()
 {
   if (!in_astra) return;
+  if (astra_selector.selected_item == NULL) return;
 
   if (astra_selector.selected_item->type == user_item)
   {
@@ -318,6 +321,8 @@ void astra_selector_jump_to_selected_item()
 
 void astra_selector_exit_current_item()
 {
+  if (astra_selector.selected_item == NULL) return;
+
   if (astra_selector.selected_item->type == slider_item && astra_to_slider_item(astra_selector.selected_item)->is_confirmed)
   {
     astra_slider_item_t* _selected_slider_item = astra_to_slider_item(astra_selector.selected_item);

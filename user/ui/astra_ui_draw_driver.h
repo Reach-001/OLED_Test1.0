@@ -125,6 +125,10 @@
  */
 #define oled_set_draw_color(color)      st7789_set_draw_color((uint8_t)(color))
 
+/** @brief 获取当前绘制颜色编号 */
+uint8_t st7789_get_draw_color(void);
+#define oled_get_draw_color()           st7789_get_draw_color()
+
 /** @brief 切换帧缓冲模式
  *  @note  1 = 缓冲绘制, 0 = 直接绘制
  */

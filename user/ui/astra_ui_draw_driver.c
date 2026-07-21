@@ -526,6 +526,11 @@ void astra_ui_driver_init(void)
  * @brief 设置当前绘图颜色（通过预定义编号）
  * @param color 颜色编号（0~6），对应 UI_COLOR_xxx 宏
  */
+uint8_t st7789_get_draw_color(void)
+{
+    return g_draw_color;
+}
+
 void st7789_set_draw_color(uint8_t color)
 {
     g_draw_color = color;

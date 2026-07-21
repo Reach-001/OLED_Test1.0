@@ -35,12 +35,11 @@ static void app_uart_hw_init(uint8 ch)
 
 void app_uart_init(void)
 {
+    /* 仅清零统计计数，不覆盖静态初始值 (enabled/inited 已在声明时设好) */
     for (uint8 ch = 0; ch < APP_UART_CHANNEL_NUM; ch++)
     {
-        s_uart[ch].enabled = false;
-        s_uart[ch].inited = false;
         s_uart[ch].rx_count = 0;
-        s_uart[ch].last_rx = 0;
+        s_uart[ch].last_rx  = 0;
     }
 }
 

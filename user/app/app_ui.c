@@ -115,7 +115,7 @@ static int16_t s_ui_speed_ki = (int16_t)PID_SPEED_KI;
  * UART 四通道 — 开关 + 长按进详情
  *===========================================================================*/
 
-static bool  s_uart_en[4] = { true, false, false, false };  /* UART0 默认开 (debug UART) */
+static bool  s_uart_en[4] = { false, false, false, false };  /* 启动时从 app_uart_get_state 同步 */
 static uint8 s_uart_no    = 0;
 
 /* ---- 选中开关时设置通道号 (init_function) ---- */
@@ -500,6 +500,13 @@ void app_ui_init(void)
 {
     astra_ui_driver_init();
     ui_draw_boot_logo();
+
+    /* 从 app_uart 同步初始状态到 UI */
+    for (uint8 i = 0; i < 4; i++) {
+        const app_uart_state_t *st = app_uart_get_state(i);
+        if (st != NULL) s_uart_en[i] = st->enabled;
+    }
+
     ui_build_astra_tree();
     in_astra = true;
     astra_init_core();

@@ -484,8 +484,8 @@ void app_ui_handle_key(bsp_key_id_enum key, uint8 pressed, bsp_key_event_enum ev
             case BSP_KEY_2:  /* KEY2 单击 → 进入/确认 */
                 astra_selector_jump_to_selected_item();
                 break;
-            case BSP_KEY_3:  /* KEY3 单击 → 返回上一级 */
-                astra_selector_exit_current_item();
+            case BSP_KEY_3:  /* KEY3 单击 → 上一个选项 */
+                astra_selector_go_prev_item();
                 break;
             default: break;
         }
@@ -498,10 +498,13 @@ void app_ui_handle_key(bsp_key_id_enum key, uint8 pressed, bsp_key_event_enum ev
                 astra_init_list();
                 astra_push_info_bar("MAIN", 600);
                 break;
-            case BSP_KEY_2:  /* KEY2 长按 → 进入子页（不切开关） */
+            case BSP_KEY_2:  /* KEY2 长按 → 进入子页 */
                 if (astra_selector.selected_item != NULL
                     && astra_selector.selected_item->child_num > 0)
                     astra_enter_child_item(astra_selector.selected_item);
+                break;
+            case BSP_KEY_3:  /* KEY3 长按 → 返回上一级 */
+                astra_selector_exit_current_item();
                 break;
             default: break;
         }

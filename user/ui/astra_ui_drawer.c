@@ -567,7 +567,7 @@ void astra_draw_selector()
   int16_t _h  = (int16_t)astra_selector.h_selector;
   int16_t _r  = astra_selector_effective_radius(_w, _h);
 
-  if (_ys < LIST_INFO_BAR_HEIGHT) return;  /* 严格小于，允许擦边显示 */
+  if (_ys <= LIST_INFO_BAR_HEIGHT) return;
 
 #if UI_SELECTOR_FILL_ENABLE
   /* 帧缓冲内白底填充: 选择区域全写1(白色), 之后画黑字清除位。

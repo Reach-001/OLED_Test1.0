@@ -253,6 +253,32 @@ void astra_selector_go_prev_item()
 
 bool astra_exit_animation_finished = true;
 
+static void astra_enter_child_item(astra_list_item_t *item)
+{
+  if (item == NULL || item->child_num == 0) return;
+
+  astra_refresh_list_value = true;
+
+  for (uint8_t i = 0; i < item->child_num; i++)
+    item->child_list_item[i]->y_list_item = item->child_list_item[i]->y_list_item_trg;
+
+  astra_selector.selected_index = 0;
+  astra_selector.selected_item = item->child_list_item[0];
+  /* 切换列表时重置相机偏移，防止旧偏移把顶部条目推到屏幕外 */
+  astra_camera.y_camera = 0;
+  astra_camera.y_camera_trg = 0;
+
+  if (astra_selector.selected_item->type == user_item)
+  {
+    astra_exit_animation_finished = false;
+    astra_user_item_t* _selected_user_item = astra_to_user_item(astra_selector.selected_item);
+    _selected_user_item->entering_user_item = true;
+    _selected_user_item->exiting_user_item = false;
+    _selected_user_item->user_item_inited = false;
+    _selected_user_item->user_item_looping = false;
+  }
+}
+
 void astra_selector_jump_to_selected_item()
 {
   if (!in_astra) return;
@@ -275,6 +301,8 @@ void astra_selector_jump_to_selected_item()
     *_selected_switch_item->value = !*_selected_switch_item->value;
     if (_selected_switch_item->exit_function)
       _selected_switch_item->exit_function();
+    if (astra_selector.selected_item->child_num > 0)
+      astra_enter_child_item(astra_selector.selected_item);
     return;
   }
 
@@ -306,23 +334,14 @@ void astra_selector_jump_to_selected_item()
 
   if (astra_selector.selected_item->child_num == 0) return;
 
-  astra_refresh_list_value = true;
-
-  for (uint8_t i = 0; i < astra_selector.selected_item->child_num; i++)
-    astra_selector.selected_item->child_list_item[i]->y_list_item =
-      astra_selector.selected_item->child_list_item[i]->y_list_item_trg;
-
-  astra_selector.selected_index = 0;
-  astra_selector.selected_item = astra_selector.selected_item->child_list_item[0];
-  /* 切换列表时重置相机偏移，防止旧偏移把顶部条目推到屏幕外 */
-  astra_camera.y_camera = 0;
-  astra_camera.y_camera_trg = 0;
+  astra_enter_child_item(astra_selector.selected_item);
 }
 
 void astra_selector_exit_current_item()
 {
   if (astra_selector.selected_item == NULL) return;
 
+  /* 滑块确认态：取消 */
   if (astra_selector.selected_item->type == slider_item && astra_to_slider_item(astra_selector.selected_item)->is_confirmed)
   {
     astra_slider_item_t* _selected_slider_item = astra_to_slider_item(astra_selector.selected_item);
@@ -331,6 +350,7 @@ void astra_selector_exit_current_item()
     return;
   }
 
+  /* 用户自定义页面：触发退场动画 */
   if (astra_selector.selected_item->type == user_item && astra_to_user_item(astra_selector.selected_item)->in_user_item)
   {
     astra_exit_animation_finished = false;
@@ -342,22 +362,26 @@ void astra_selector_exit_current_item()
     return;
   }
 
-  astra_refresh_list_value = true;
-
-  if (astra_selector.selected_item->parent->layer == 0 && in_astra)
+  /* 根层级或 parent 无效：忽略返回操作 */
+  if (astra_selector.selected_item->parent == NULL
+      || astra_selector.selected_item->parent->parent == NULL)
   {
-    if (ALLOW_EXIT_ASTRA_UI_BY_USER) in_astra = false;
     return;
   }
 
-  for (uint8_t i = 0; i < astra_selector.selected_item->parent->parent->child_num; i++)
-      astra_selector.selected_item->parent->parent->child_list_item[i]->y_list_item =
-        astra_selector.selected_item->parent->parent->child_list_item[i]->y_list_item_trg;
+  astra_refresh_list_value = true;
 
+  /* 恢复父级列表项位置 */
+  astra_list_item_t *_grandparent = astra_selector.selected_item->parent->parent;
+  for (uint8_t i = 0; i < _grandparent->child_num; i++)
+      _grandparent->child_list_item[i]->y_list_item =
+        _grandparent->child_list_item[i]->y_list_item_trg;
+
+  /* 在祖父列表中找到父节点索引 */
   uint8_t _temp_index = 0;
-  for (uint8_t i = 0; i < astra_selector.selected_item->parent->parent->child_num; i++)
+  for (uint8_t i = 0; i < _grandparent->child_num; i++)
   {
-    if (astra_selector.selected_item->parent->parent->child_list_item[i] == astra_selector.selected_item->parent)
+    if (_grandparent->child_list_item[i] == astra_selector.selected_item->parent)
     {
       _temp_index = i;
       break;

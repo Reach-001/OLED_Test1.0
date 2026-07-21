@@ -60,11 +60,7 @@ static void astra_draw_scrollbar_color_overlay(void)
                          (float)child_num);
   int16_t thumb_y = LIST_INFO_BAR_HEIGHT + 4 + astra_selector.selected_index * part_len;
 
-  /* 轨道黑底（擦除帧缓冲残留，保证滚动条区域纯净） */
-  oled_set_draw_color(UI_COLOR_BLACK);
-  oled_draw_box(OLED_WIDTH - 5, bar_top, 5, bar_h);
-
-  /* 轨道边框 — 强调色 */
+  /* 轨道边框 — 强调色（直写模式，无帧缓冲残留，不需擦黑底） */
   oled_set_draw_color(UI_SCROLLBAR_ACCENT_COLOR);
   oled_draw_V_line(OLED_WIDTH - 5, bar_top, bar_h);
   oled_draw_V_line(OLED_WIDTH - 1, bar_top, bar_h);
@@ -343,8 +339,25 @@ void astra_draw_list_appearance()
   oled_set_draw_color(UI_TITLE_LINE_COLOR);
   oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
 #endif
-  /* 滚动条已移至 astra_draw_color_overlay() 直写层，
-   * 避免帧缓冲白底版与直写彩版两次绘制导致的闪烁。 */
+
+  /* ---- 右侧滚动条 (帧缓冲绘制, 无闪烁) ---- */
+  uint8_t child_num = astra_selector.selected_item->parent->child_num;
+  if (child_num <= 1) return;
+
+  float part_len = ceilf((SCREEN_HEIGHT - LIST_INFO_BAR_HEIGHT - 8.0f) / (float)child_num);
+  int16_t thumb_y = LIST_INFO_BAR_HEIGHT + 4 + astra_selector.selected_index * part_len;
+
+  /* 轨道线 */
+  oled_set_draw_color(UI_COLOR_WHITE);
+  oled_draw_V_line(OLED_WIDTH - 5, LIST_INFO_BAR_HEIGHT, OLED_HEIGHT - LIST_INFO_BAR_HEIGHT);
+  oled_draw_V_line(OLED_WIDTH - 1, LIST_INFO_BAR_HEIGHT, OLED_HEIGHT - LIST_INFO_BAR_HEIGHT);
+
+  /* 滑块 */
+  oled_draw_box(OLED_WIDTH - 4, thumb_y, 3, (int16_t)part_len);
+
+  /* 首尾帽 */
+  oled_draw_box(OLED_WIDTH - 4, LIST_INFO_BAR_HEIGHT, 3, 4);
+  oled_draw_box(OLED_WIDTH - 4, OLED_HEIGHT - 4, 3, 4);
 }
 
 /*===========================================================================
@@ -547,10 +560,7 @@ void astra_draw_color_overlay()
   oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
 #endif
 
-#if UI_SCROLLBAR_ACCENT_ENABLE
-  astra_draw_scrollbar_color_overlay();
-#endif
-
+  /* 信息栏/弹窗的彩色强调边框 */
   if (astra_info_bar.is_running)
   {
     int16_t _x_bar = OLED_WIDTH / 2 - astra_info_bar.w_info_bar / 2;

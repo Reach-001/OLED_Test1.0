@@ -48,10 +48,21 @@ bool app_uart_set_enable(uint8 ch, bool enable)
 {
     if (!app_uart_valid_ch(ch)) return false;
 
+    static UART_Regs *const uart_list[APP_UART_CHANNEL_NUM] = {
+        UART0, UART1, UART2, UART3
+    };
+
     if (enable && !s_uart[ch].inited)
         app_uart_hw_init(ch);
 
     s_uart[ch].enabled = enable;
+
+    /* 硬件层真正开关 UART 外设，不依赖软件标志 */
+    if (enable)
+        DL_UART_Main_enable(uart_list[ch]);
+    else if (s_uart[ch].inited)
+        DL_UART_Main_disable(uart_list[ch]);
+
     return true;
 }
 

@@ -170,29 +170,71 @@ static int16_t s_ui_speed_kp = (int16_t)PID_SPEED_KP;
 static int16_t s_ui_speed_ki = (int16_t)PID_SPEED_KI;
 
 /*===========================================================================
- * UART 四通道开关
+ * UART 四通道 — 进入后: 开关 + 详细参数
  *===========================================================================*/
 
-#define UI_UART_DEFAULT_BAUD   115200
+#define UI_UART_BAUD  115200
 
-static bool s_uart_en[4]     = { false, false, false, false };
-static bool s_uart_inited[4] = { false, false, false, false };
+static bool   s_uart_en[4] = { false, false, false, false };
+static bool   s_uart_ok[4] = { false, false, false, false };
+static uint8  s_uart_no     = 0;
+static uint32 s_uart_tx[4]  = { 0 };
+static uint32 s_uart_rx[4]  = { 0 };
 
-static void ui_uart_init_ch(uint8 ch)
+static void ui_uart_do_init(uint8 ch)
 {
-    uint32 tx = (ch == 0) ? UART0_TX_A0  : (ch == 1) ? UART1_TX_B4
-              : (ch == 2) ? UART2_TX_A21 : UART3_TX_B12;
-    uint32 rx = (ch == 0) ? UART0_RX_A1  : (ch == 1) ? UART1_RX_B5
-              : (ch == 2) ? UART2_RX_A22 : UART3_RX_B13;
-    uart_init((uart_index_enum)ch, UI_UART_DEFAULT_BAUD,
-              (uart_tx_pin_enum)tx, (uart_rx_pin_enum)rx);
-    s_uart_inited[ch] = true;
+    uint32 tx = (ch==0)?UART0_TX_A0:(ch==1)?UART1_TX_B4:(ch==2)?UART2_TX_A21:UART3_TX_B12;
+    uint32 rx = (ch==0)?UART0_RX_A1:(ch==1)?UART1_RX_B5:(ch==2)?UART2_RX_A22:UART3_RX_B13;
+    uart_init((uart_index_enum)ch, UI_UART_BAUD, (uart_tx_pin_enum)tx, (uart_rx_pin_enum)rx);
+    s_uart_ok[ch] = true;
 }
 
-static void ui_uart0_on(void) { if (s_uart_en[0] && !s_uart_inited[0]) ui_uart_init_ch(0); }
-static void ui_uart1_on(void) { if (s_uart_en[1] && !s_uart_inited[1]) ui_uart_init_ch(1); }
-static void ui_uart2_on(void) { if (s_uart_en[2] && !s_uart_inited[2]) ui_uart_init_ch(2); }
-static void ui_uart3_on(void) { if (s_uart_en[3] && !s_uart_inited[3]) ui_uart_init_ch(3); }
+/* ===== 各通道 init — 记录通道号 ===== */
+static void ui_u0_in(void) { s_uart_no = 0; }
+static void ui_u1_in(void) { s_uart_no = 1; }
+static void ui_u2_in(void) { s_uart_no = 2; }
+static void ui_u3_in(void) { s_uart_no = 3; }
+static void ui_uart_out(void) {}
+
+/* ===== 开关回调 ===== */
+static void ui_u0_sw(void) { if(s_uart_en[0]&&!s_uart_ok[0])ui_uart_do_init(0); }
+static void ui_u1_sw(void) { if(s_uart_en[1]&&!s_uart_ok[1])ui_uart_do_init(1); }
+static void ui_u2_sw(void) { if(s_uart_en[2]&&!s_uart_ok[2])ui_uart_do_init(2); }
+static void ui_u3_sw(void) { if(s_uart_en[3]&&!s_uart_ok[3])ui_uart_do_init(3); }
+
+/* ===== 引脚名 ===== */
+static const char *np(uint32 p) {
+    switch(p & 0xFFF) { case A0:return"A0";case A1:return"A1";case B4:return"B4";case B5:return"B5";case A21:return"A21";case A22:return"A22";case B12:return"B12";case B13:return"B13";default:return"?"; }
+}
+
+/* ===== 信息页 loop ===== */
+static void ui_uart_info_loop(void)
+{
+    uint8 c = s_uart_no;
+    uint32 tx=(c==0)?UART0_TX_A0:(c==1)?UART1_TX_B4:(c==2)?UART2_TX_A21:UART3_TX_B12;
+    uint32 rx=(c==0)?UART0_RX_A1:(c==1)?UART1_RX_B5:(c==2)?UART2_RX_A22:UART3_RX_B13;
+
+    st7789_set_font(astra_default_font);
+    char b[32] = {};
+
+    oled_set_draw_color(UI_COLOR_WHITE);
+    snprintf(b, sizeof(b), "UART%d  %s", c, s_uart_en[c]?"ON":"OFF");
+    oled_draw_UTF8(8, 22, b);
+
+    oled_set_draw_color(UI_COLOR_GRAY);
+    snprintf(b, sizeof(b), "BAUD: %u", UI_UART_BAUD);
+    oled_draw_UTF8(8, 42, b);
+    snprintf(b, sizeof(b), "TX:%s RX:%s", np(tx), np(rx));
+    oled_draw_UTF8(8, 58, b);
+
+    oled_set_draw_color(UI_COLOR_WHITE);
+    oled_draw_H_line(8, 72, OLED_WIDTH - 16);
+
+    snprintf(b, sizeof(b), "TX: %u", s_uart_tx[c]);
+    oled_draw_UTF8(8, 90, b);
+    snprintf(b, sizeof(b), "RX: %u", s_uart_rx[c]);
+    oled_draw_UTF8(8, 106, b);
+}
 
 /*===========================================================================
  * 陀螺仪页面 — IMU660RA 数据显示
@@ -456,11 +498,25 @@ static void ui_build_astra_tree(void)
         astra_new_slider_item("Speed KI", &s_ui_speed_ki,
                               1, 0, 60, ui_sync_control_values, ui_apply_pid_values, slider_icon));
 
-    /* ===== UART ===== */
-    ui_push_item(uart_page, astra_new_switch_item("UART0", &s_uart_en[0], NULL, ui_uart0_on, switch_icon));
-    ui_push_item(uart_page, astra_new_switch_item("UART1", &s_uart_en[1], NULL, ui_uart1_on, switch_icon));
-    ui_push_item(uart_page, astra_new_switch_item("UART2", &s_uart_en[2], NULL, ui_uart2_on, switch_icon));
-    ui_push_item(uart_page, astra_new_switch_item("UART3", &s_uart_en[3], NULL, ui_uart3_on, switch_icon));
+    /* ===== UART — 每通道: 开关 + 参数 ===== */
+    astra_list_item_t *u0 = astra_new_list_item("UART0", switch_icon);
+    astra_list_item_t *u1 = astra_new_list_item("UART1", switch_icon);
+    astra_list_item_t *u2 = astra_new_list_item("UART2", switch_icon);
+    astra_list_item_t *u3 = astra_new_list_item("UART3", switch_icon);
+    ui_push_item(uart_page, u0); ui_push_item(uart_page, u1);
+    ui_push_item(uart_page, u2); ui_push_item(uart_page, u3);
+
+    ui_push_item(u0, astra_new_switch_item("Enable", &s_uart_en[0], NULL, ui_u0_sw, switch_icon));
+    ui_push_item(u0, astra_new_user_item("Params", ui_u0_in, ui_uart_info_loop, ui_uart_out, list_icon));
+
+    ui_push_item(u1, astra_new_switch_item("Enable", &s_uart_en[1], NULL, ui_u1_sw, switch_icon));
+    ui_push_item(u1, astra_new_user_item("Params", ui_u1_in, ui_uart_info_loop, ui_uart_out, list_icon));
+
+    ui_push_item(u2, astra_new_switch_item("Enable", &s_uart_en[2], NULL, ui_u2_sw, switch_icon));
+    ui_push_item(u2, astra_new_user_item("Params", ui_u2_in, ui_uart_info_loop, ui_uart_out, list_icon));
+
+    ui_push_item(u3, astra_new_switch_item("Enable", &s_uart_en[3], NULL, ui_u3_sw, switch_icon));
+    ui_push_item(u3, astra_new_user_item("Params", ui_u3_in, ui_uart_info_loop, ui_uart_out, list_icon));
 
     /* ===== IMU Gyro ===== */
     ui_push_item(imu_page,

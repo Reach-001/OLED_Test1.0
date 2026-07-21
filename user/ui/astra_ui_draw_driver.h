@@ -139,11 +139,11 @@
 /** @brief 设置字体绘制方向 */
 #define oled_set_font_direction(dir)    st7789_set_font_dir((uint8_t)(dir))
 
-/** @brief 清空显示缓冲区 (直接写屏模式: 全屏填充黑色) */
+/** @brief 清空显示缓冲区 */
 #define oled_clear_buffer()             st7789_clear_screen()
 
-/** @brief 发送缓冲区到屏幕 (直接写屏模式: 空操作) */
-#define oled_send_buffer()              ((void)0)
+/** @brief 发送缓冲区到屏幕 */
+#define oled_send_buffer()              st7789_send_buffer()
 
 /** @brief 发送局部缓冲区到屏幕 */
 #define oled_send_area_buffer(x, y, w, h) ((void)0)
@@ -164,6 +164,7 @@ void st7789_set_draw_color(uint8_t color);
 void st7789_set_font_mode(uint8_t mode);
 void st7789_set_font_dir(uint8_t dir);
 void st7789_clear_screen(void);
+void st7789_send_buffer(void);
 
 /* --- 像素/几何绘制 --- */
 void st7789_draw_pixel(int16_t x, int16_t y);

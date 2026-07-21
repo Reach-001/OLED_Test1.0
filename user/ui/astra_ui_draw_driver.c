@@ -3,7 +3,7 @@
  * @brief   ST7789 裸驱动 + 字体渲染 — 支持 1.14 寸 240×135 / 1.47 寸 320×172 横屏
  * @note    基于厂家 ST7789 示例驱动改写
  * @note    使用 MSPM0 硬件 SPI1, SCK=PB9, MOSI=PB8
- * @note    无帧缓冲 — 所有绘制直接写入 ST7789 GRAM
+ * @note    默认使用 1-bit 帧缓冲，oled_send_buffer() 时转换为 RGB565 写屏
  *
  * 移植说明:
  *   1. 修改引脚宏定义 (SCL/MOSI/RES/DC/CS/BLK)
@@ -106,6 +106,15 @@ static uint8_t  g_font_mode  = 1;
 static uint8_t  g_font_dir   = 0;
 static const void *g_current_font = NULL;
 static bool     g_is_cn_font  = false;
+
+enum
+{
+    ST7789_FB_STRIDE = (OLED_WIDTH + 7) / 8,
+    ST7789_FB_SIZE = ST7789_FB_STRIDE * OLED_HEIGHT,
+};
+
+static uint8_t g_framebuffer[ST7789_FB_SIZE];
+static uint8_t g_buffer_mode = 1;
 
 /*===========================================================================
  * 硬件 SPI 底层
@@ -467,19 +476,50 @@ void st7789_set_draw_color(uint8_t color)
 void st7789_set_font_mode(uint8_t mode)  { g_font_mode = mode; }
 void st7789_set_font_dir(uint8_t dir)    { g_font_dir = dir; }
 
+static void st7789_fb_pixel(int16_t x, int16_t y, uint8_t color)
+{
+    uint32_t index;
+    uint8_t mask;
+
+    if (x < 0 || x >= OLED_WIDTH || y < 0 || y >= OLED_HEIGHT) return;
+    index = (uint32_t)y * ST7789_FB_STRIDE + ((uint16_t)x >> 3);
+    mask = (uint8_t)(0x80 >> ((uint16_t)x & 7));
+    if (color) g_framebuffer[index] |= mask;
+    else g_framebuffer[index] &= (uint8_t)~mask;
+}
+
 void st7789_clear_screen(void)
 {
+    if (g_buffer_mode)
+    {
+        memset(g_framebuffer, 0, sizeof(g_framebuffer));
+        return;
+    }
+
     st7789_set_window(0, 0, OLED_WIDTH - 1, OLED_HEIGHT - 1);
     st7789_fill_pixels(COLOR_BLACK, (uint32_t)OLED_WIDTH * OLED_HEIGHT);
 }
 
+void st7789_send_buffer(void)
+{
+    st7789_blit_mono(0, 0, OLED_WIDTH, OLED_HEIGHT,
+                     g_framebuffer, ST7789_FB_STRIDE, COLOR_WHITE, COLOR_BLACK);
+}
+
 /*===========================================================================
- * 几何绘制 — 直接写 GRAM, 无帧缓冲
+ * 几何绘制 — 缓冲模式下写入 1-bit framebuffer，直写模式下写入 GRAM
  *===========================================================================*/
 
 void st7789_draw_pixel(int16_t x, int16_t y)
 {
     if (x < 0 || x >= OLED_WIDTH || y < 0 || y >= OLED_HEIGHT) return;
+    if (g_buffer_mode)
+    {
+        if (g_draw_color == 0) st7789_fb_pixel(x, y, 0);
+        else st7789_fb_pixel(x, y, 1);
+        return;
+    }
+
     st7789_set_window(x, y, x, y);
     st7789_write_data16(g_fg_color);
 }
@@ -491,6 +531,16 @@ void st7789_draw_hline(int16_t x, int16_t y, int16_t len)
     if (x + len > OLED_WIDTH) len = OLED_WIDTH - x;
     if (len <= 0) return;
 
+    if (g_buffer_mode)
+    {
+        for (int16_t i = 0; i < len; i++)
+        {
+            if (g_draw_color == 0) st7789_fb_pixel(x + i, y, 0);
+            else st7789_fb_pixel(x + i, y, 1);
+        }
+        return;
+    }
+
     st7789_set_window(x, y, x + len - 1, y);
     st7789_fill_pixels(g_fg_color, len);
 }
@@ -501,6 +551,16 @@ void st7789_draw_vline(int16_t x, int16_t y, int16_t h)
     if (y < 0) { h += y; y = 0; }
     if (y + h > OLED_HEIGHT) h = OLED_HEIGHT - y;
     if (h <= 0) return;
+
+    if (g_buffer_mode)
+    {
+        for (int16_t i = 0; i < h; i++)
+        {
+            if (g_draw_color == 0) st7789_fb_pixel(x, y + i, 0);
+            else st7789_fb_pixel(x, y + i, 1);
+        }
+        return;
+    }
 
     st7789_set_window(x, y, x, y + h - 1);
     st7789_fill_pixels(g_fg_color, h);
@@ -531,6 +591,15 @@ void st7789_draw_box(int16_t x, int16_t y, int16_t w, int16_t h)
     if (x + w > OLED_WIDTH)  w = OLED_WIDTH  - x;
     if (y + h > OLED_HEIGHT) h = OLED_HEIGHT - y;
     if (w <= 0 || h <= 0) return;
+
+    if (g_buffer_mode)
+    {
+        for (int16_t yy = 0; yy < h; yy++)
+        {
+            st7789_draw_hline(x, y + yy, w);
+        }
+        return;
+    }
 
     st7789_set_window(x, y, x + w - 1, y + h - 1);
     st7789_fill_pixels(g_fg_color, (uint32_t)w * h);

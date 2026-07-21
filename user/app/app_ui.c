@@ -148,8 +148,8 @@ void app_ui_task(void)
 {
     if (!in_astra) in_astra = true;
 
-    /* Astra 原始绘制模型没有 ST7789 局部脏区，这里先全屏清除验证框架可用性。 */
     oled_clear_buffer();
     astra_ui_main_core();
     astra_ui_widget_core();
+    oled_send_buffer();
 }

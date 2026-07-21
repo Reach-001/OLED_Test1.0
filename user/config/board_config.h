@@ -32,11 +32,11 @@
  * 按键配置
  *===========================================================================*/
 #define KEY1_PIN                B21                 /* 按键1 / UI */
-#define KEY2_PIN                A0                  /* 按键2 */
-#define KEY3_PIN                A28                 /* 按键3 */
+#define KEY2_PIN                A28                 /* 按键2 */
+#define KEY3_PIN                A8                  /* 按键3 */
 #define KEY_ACTIVE_LEVEL        0                   /* 按键按下电平 (0=低电平触发) */
 #define KEY_DEBOUNCE_COUNT      2                   /* 消抖次数，单位为按键扫描周期 */
-#define KEY_LONG_PRESS_COUNT    50                  /* 长按次数，50 * 20ms = 1s */
+#define KEY_LONG_PRESS_COUNT    30                  /* 长按次数，50 * 20ms = 1s */
 
 /*===========================================================================
  * 电机配置 - 双路直流电机 (TB6612/DRV8833 驱动)

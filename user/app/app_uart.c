@@ -14,7 +14,7 @@
 #endif
 
 static app_uart_state_t s_uart[APP_UART_CHANNEL_NUM] = {
-    { false, false, UART_0, UART0_TX_B0,        UART0_RX_B1,        APP_UART_BAUD, 0, 0 },
+    { false, false, UART_0, UART0_TX_A0,        UART0_RX_A1,        APP_UART_BAUD, 0, 0 },
     { false, false, UART_1, WIRELESS_UART_TX,   WIRELESS_UART_RX,   APP_UART_BAUD, 0, 0 },
     { false, false, UART_2, UART2_TX_A21,       UART2_RX_A22,       APP_UART_BAUD, 0, 0 },
     { false, false, UART_3, UART3_TX_B12,       UART3_RX_B13,       APP_UART_BAUD, 0, 0 },
@@ -86,8 +86,8 @@ const char *app_uart_pin_name(uint32 pin)
 {
     switch (pin & UART_PIN_INDEX_MASK)
     {
-        case B0:  return "B0";
-        case B1:  return "B1";
+        case A0:  return "A0";
+        case A1:  return "A1";
         case A21: return "A21";
         case A22: return "A22";
         case B4:  return "B4";

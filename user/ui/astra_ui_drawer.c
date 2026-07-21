@@ -373,24 +373,14 @@ void astra_draw_list_item()
                       + astra_camera.y_camera;
     int16_t _y_item = _baseline - oled_get_str_height() / 2;
     bool _row_visible = astra_list_row_visible(_baseline);
-    bool _is_selected = (astra_selector.selected_item->parent->child_list_item[i]
-                        == astra_selector.selected_item);
 
     oled_set_draw_color(UI_LIST_TEXT_COLOR);
 
-    /* 选中项在填充底色上，控件用黑色绘制才可见 */
-    uint8 _ctrl_color = (_is_selected && UI_SELECTOR_FILL_ENABLE)
-                        ? UI_COLOR_BLACK : UI_LIST_TEXT_COLOR;
-
-    /* 选中行图标/控件用 _ctrl_color 绘制，白底上黑线才可见 */
     /* ---- 列表项 (带箭头) ---- */
     if (astra_selector.selected_item->parent->child_list_item[i]->type == list_item)
     {
       if (_row_visible)
-      {
-        oled_set_draw_color(_ctrl_color);
         astra_draw_list_icon(astra_selector.selected_item->parent->child_list_item[i]->icon, _x_item, _y_item);
-      }
     }
     /* ---- 开关项 ---- */
     else if (astra_selector.selected_item->parent->child_list_item[i]->type == switch_item)
@@ -401,7 +391,6 @@ void astra_draw_list_item()
 
       if (_row_visible)
       {
-        oled_set_draw_color(_ctrl_color);
         astra_draw_list_icon(astra_selector.selected_item->parent->child_list_item[i]->icon, _x_item, _y_item);
 
         /* 开关指示器: 右侧小框 + 填充表示 ON/OFF */
@@ -423,10 +412,7 @@ void astra_draw_list_item()
     else if (astra_selector.selected_item->parent->child_list_item[i]->type == button_item)
     {
       if (_row_visible)
-      {
-        oled_set_draw_color(_ctrl_color);
         astra_draw_list_icon(astra_selector.selected_item->parent->child_list_item[i]->icon, _x_item, _y_item);
-      }
     }
     /* ---- 滑块项 ---- */
     else if (astra_selector.selected_item->parent->child_list_item[i]->type == slider_item)
@@ -437,7 +423,6 @@ void astra_draw_list_item()
 
       if (_row_visible)
       {
-        oled_set_draw_color(_ctrl_color);
         astra_draw_list_icon(astra_selector.selected_item->parent->child_list_item[i]->icon, _x_item, _y_item);
 
         char _val_str[10] = {};
@@ -447,18 +432,17 @@ void astra_draw_list_item()
 
         if (_sl->is_confirmed)
         {
-          /* 确认状态下闪烁显示 */
           static uint32_t _last_tick = 0;
           static bool _visible = false;
           uint32_t _tick = get_ticks();
 
           if (_visible)
           {
-            oled_set_draw_color(_ctrl_color);
+            oled_set_draw_color(UI_SLIDER_VALUE_BOX_COLOR);
             oled_draw_R_box(_vx, _y_item - 4, oled_get_UTF8_width(_val_str) + 4, oled_get_str_height() - 2, 1);
           }
 
-          oled_set_draw_color(_ctrl_color);
+          oled_set_draw_color(UI_SLIDER_VALUE_TEXT_COLOR);
           oled_draw_str(_vx + 2, _y_item + oled_get_str_height() / 2, _val_str);
 
           if (_tick - _last_tick >= 1000)
@@ -469,7 +453,6 @@ void astra_draw_list_item()
         }
         else
         {
-          oled_set_draw_color(_ctrl_color);
           oled_draw_str(_vx + 2, _y_item + oled_get_str_height() / 2, _val_str);
         }
       }
@@ -478,27 +461,14 @@ void astra_draw_list_item()
     else
     {
       if (_row_visible)
-      {
-        oled_set_draw_color(_ctrl_color);
         astra_draw_list_icon(astra_selector.selected_item->parent->child_list_item[i]->icon, _x_item, _y_item);
-      }
     }
 
-    /* 绘制文字内容 (所有类型共用) */
+    /* 绘制文字内容 (所有类型共用) — 全部白色, 选择器图案自然透出 */
     astra_set_font(astra_default_font);
     if (_row_visible)
-    {
-#if UI_SELECTOR_FILL_ENABLE
-      /* 实体填充模式下，选中项反色显示（白底黑字） */
-      if (astra_selector.selected_item->parent->child_list_item[i]
-          == astra_selector.selected_item)
-        oled_set_draw_color(UI_COLOR_BLACK);
-      else
-        oled_set_draw_color(UI_LIST_TEXT_COLOR);
-#endif
       oled_draw_UTF8(10 + _x_item, _baseline,
                      astra_selector.selected_item->parent->child_list_item[i]->content);
-    }
   }
 
   astra_refresh_list_value = false;
@@ -563,45 +533,68 @@ void astra_draw_list_icon(astra_list_item_icon_t icon, uint16_t x, uint16_t y)
 }
 
 /*===========================================================================
- * 选择器绘制 — 圆角高亮框 + 棋盘格过渡
+ * 选择器绘制 — u8g2 图案模式思想，适配 RGB565
+ *
+ * 原理: 1-bit 帧缓冲的 fb_pixel(color>0) 只写 '1' 不写 '0'。
+ *       先画 items(白字白控件) → 再画 selector(棋盘格图案)。
+ *       图案只增加像素, 已有白字保持白字。blit 后 0=黑 1=白,
+ *       高密度棋盘格在 RGB565 屏上视觉融合为灰色, 白字自然透出。
  *===========================================================================*/
 
 void astra_draw_selector()
 {
   int16_t _xs = astra_camera.x_camera + LIST_ITEM_LEFT_MARGIN;
   int16_t _ys = astra_selector.y_selector + astra_camera.y_camera;
-  int16_t _r  = astra_selector_effective_radius((int16_t)astra_selector.w_selector,
-                                                (int16_t)astra_selector.h_selector);
+  int16_t _w  = (int16_t)astra_selector.w_selector;
+  int16_t _h  = (int16_t)astra_selector.h_selector;
+  int16_t _r  = astra_selector_effective_radius(_w, _h);
 
   if (_ys <= LIST_INFO_BAR_HEIGHT) return;
 
 #if UI_SELECTOR_FILL_ENABLE
-  /* 实体填充 + 圆角边框 */
-  oled_set_draw_color(UI_SELECTOR_FILL_COLOR);
-  oled_draw_R_box(_xs, _ys,
-                  astra_selector.w_selector, astra_selector.h_selector, _r);
-
-  /* 细圆角边框线 */
-  oled_set_draw_color(UI_SELECTOR_FRAME_COLOR);
-  oled_draw_R_frame(_xs, _ys,
-                    astra_selector.w_selector, astra_selector.h_selector, _r);
-
-  /* 右侧棋盘格过渡边缘: 从填充区到空白区做 8px 软过渡 */
-  oled_set_draw_color(UI_SELECTOR_FRAME_COLOR);
-  for (int16_t px = astra_selector.w_selector + _xs;
-       px <= astra_selector.w_selector + _xs + 7; px += 2)
+  /* 棋盘格图案填充: 隔列隔行写白像素 = 50% 密度 = 视觉灰色。
+   * 只写 1(oled_draw_pixel 用非0颜色), 已有白字不受影响。 */
+  for (int16_t py = 0; py < _h; py++)
   {
-    for (int16_t py = _ys; py <= _ys + (int16_t)astra_selector.h_selector - 1; py++)
+    int16_t row_top    = _ys + py;
+    int16_t row_offset = (py < _r) ? (_r - 1 - py)
+                       : (py >= _h - _r) ? (py - (_h - _r))
+                       : -1;
+
+    for (int16_t px = 0; px < _w; px++)
     {
-      if (py % 2 == 0) oled_draw_pixel(px + 1, py);
-      else             oled_draw_pixel(px, py);
+      /* 棋盘格: (px+py) & 1 交替 */
+      if ((px + py) & 1) continue;
+
+      /* 圆角裁剪: 四角超出圆半径的像素跳过 */
+      if (row_offset >= 0)
+      {
+        int16_t col_offset = (px < _r) ? (_r - 1 - px)
+                           : (px >= _w - _r) ? (px - (_w - _r))
+                           : -1;
+        if (col_offset >= 0)
+        {
+          int16_t dist2 = row_offset * row_offset + col_offset * col_offset;
+          if (dist2 > _r * _r + _r) continue;
+        }
+      }
+
+      oled_draw_pixel(_xs + px, row_top);
     }
   }
-#else
-  /* 仅线框模式 */
+
+  /* 右侧棋盘格过渡 8px */
+  for (int16_t px = _w; px < _w + 8; px += 2)
+    for (int16_t py = 0; py < _h; py++)
+      if ((px + py) % 2 == 0)
+        oled_draw_pixel(_xs + px, _ys + py);
+
+  /* 白色圆角细线边框 */
   oled_set_draw_color(UI_SELECTOR_FRAME_COLOR);
-  oled_draw_R_frame(_xs, _ys,
-                    astra_selector.w_selector, astra_selector.h_selector, _r);
+  oled_draw_R_frame(_xs, _ys, _w, _h, _r);
+#else
+  oled_set_draw_color(UI_SELECTOR_FRAME_COLOR);
+  oled_draw_R_frame(_xs, _ys, _w, _h, _r);
 #endif
 }
 
@@ -651,6 +644,6 @@ void astra_draw_widget()
 void astra_draw_list()
 {
   astra_draw_list_appearance();
-  astra_draw_selector();
-  astra_draw_list_item();
+  astra_draw_list_item();      /* 先画内容 (白字白控件) */
+  astra_draw_selector();       /* 后画选择器 (棋盘格图案叠在上面) */
 }

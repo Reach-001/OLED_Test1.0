@@ -318,18 +318,21 @@ void astra_selector_jump_to_selected_item()
 
   if (astra_selector.selected_item->type == slider_item)
   {
-    astra_slider_item_t* _selected_slider_item = astra_to_slider_item(astra_selector.selected_item);
-    if (!_selected_slider_item->is_confirmed)
+    astra_slider_item_t* _s = astra_to_slider_item(astra_selector.selected_item);
+    if (!_s->is_confirmed)
     {
-      _selected_slider_item->is_confirmed = true;
-      _selected_slider_item->value_backup = *_selected_slider_item->value;
+      /* 进入调值模式: 先从硬件同步当前值, 再备份为取消恢复点 */
+      if (_s->init_function) _s->init_function();
+      _s->is_confirmed = true;
+      _s->value_backup = *_s->value;
       return;
     }
-    if (_selected_slider_item->is_confirmed)
+    else
     {
-      if (_selected_slider_item->exit_function)
-        _selected_slider_item->exit_function();
-      _selected_slider_item->is_confirmed = false;
+      /* 确认新值: 应用 → 同步回显示 → 退出调值模式 */
+      if (_s->exit_function) _s->exit_function();
+      _s->is_confirmed = false;
+      if (_s->init_function) _s->init_function();
       return;
     }
   }

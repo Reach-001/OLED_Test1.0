@@ -431,8 +431,8 @@ void astra_draw_list_item()
     else if (astra_selector.selected_item->parent->child_list_item[i]->type == slider_item)
     {
       astra_slider_item_t *_sl = astra_to_slider_item(astra_selector.selected_item->parent->child_list_item[i]);
-      if (_sl->init_function && astra_refresh_list_value)
-        _sl->init_function();
+      if (_sl->init_function && astra_refresh_list_value && !_sl->is_confirmed)
+        _sl->init_function();  /* 调值中不刷新，防止硬件旧值覆盖用户修改 */
 
       if (_row_visible)
       {
@@ -456,7 +456,7 @@ void astra_draw_list_item()
             oled_draw_R_box(_vx, _y_item - 4, oled_get_UTF8_width(_val_str) + 4, oled_get_str_height() - 2, 1);
           }
 
-          oled_set_draw_color(_is_sel ? UI_LIST_TEXT_COLOR : UI_SLIDER_VALUE_TEXT_COLOR);
+          oled_set_draw_color(UI_COLOR_BLACK);        /* 确认态始终黑字: 非选中=黑底, 选中=白底 */
           oled_draw_str(_vx + 2, _y_item + oled_get_str_height() / 2, _val_str);
 
           if (_tick - _last_tick >= 1000)

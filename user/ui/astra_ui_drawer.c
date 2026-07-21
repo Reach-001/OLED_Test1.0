@@ -544,12 +544,14 @@ void astra_draw_selector()
   if (_ys <= LIST_INFO_BAR_HEIGHT) return;
 
 #if UI_SELECTOR_FILL_ENABLE
-  /* 1-bit 帧缓冲灰色模拟: 隔行填充横线，50% 密度 = 视觉灰色 */
+  /* u8g2 color(2) = 图案模式：隔行白线 = 50% 密度 = 视觉灰色。
+   * 图案只往缓冲区写 '1'，不写 '0'。已画好的白字白控件不受影响。 */
   oled_set_draw_color(UI_LIST_TEXT_COLOR);
-  /* 顶部圆角区逐行扫描 */
+
+  /* 顶部圆角区 */
   for (int16_t row = 0; row < _r; row++)
   {
-    if (row % 2 != 0) continue;  /* 隔行 */
+    if (row % 2 != 0) continue;
     int16_t cy = _r - 1 - row;
     int16_t dx = (int16_t)(sqrtf((float)(_r * _r - cy * cy)) + 0.5f);
     oled_draw_H_line(_xs + _r - dx, _ys + row, _w - 2 * _r + 2 * dx);
@@ -571,17 +573,9 @@ void astra_draw_selector()
 
   /* 右侧棋盘格过渡 8px */
   for (int16_t px = _w; px < _w + 8; px += 2)
-  {
     for (int16_t py = 0; py < _h; py++)
-    {
       if ((px + py) % 2 == 0)
         oled_draw_pixel(_xs + px, _ys + py);
-    }
-  }
-
-  /* 圆角细线边框 */
-  oled_set_draw_color(UI_SELECTOR_FRAME_COLOR);
-  oled_draw_R_frame(_xs, _ys, _w, _h, _r);
 #else
   /* 仅圆角线框 */
   oled_set_draw_color(UI_SELECTOR_FRAME_COLOR);
@@ -599,22 +593,6 @@ void astra_draw_color_overlay()
 #if UI_TITLE_ENABLE
   oled_set_draw_color(UI_TITLE_LINE_COLOR);
   oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
-#endif
-
-  /* 选择器 RGB565 强调边框 */
-#if UI_SELECTOR_FILL_ENABLE
-  {
-    int16_t _sx = LIST_ITEM_LEFT_MARGIN;
-    int16_t _sy = astra_selector.y_selector + astra_camera.y_camera;
-    int16_t _sw = (int16_t)astra_selector.w_selector;
-    int16_t _sh = (int16_t)astra_selector.h_selector;
-    int16_t _sr = astra_selector_effective_radius(_sw, _sh);
-    if (_sy > LIST_INFO_BAR_HEIGHT)
-    {
-      oled_set_draw_color(UI_SELECTOR_ACCENT_COLOR);
-      oled_draw_R_frame(_sx - 1, _sy - 1, _sw + 2, _sh + 2, _sr + 1);
-    }
-  }
 #endif
 
   /* 信息栏/弹窗的彩色强调边框 */
@@ -651,6 +629,6 @@ void astra_draw_widget()
 void astra_draw_list()
 {
   astra_draw_list_appearance();
-  astra_draw_selector();
   astra_draw_list_item();
+  astra_draw_selector();   /* 最后绘制：图案覆盖在已有内容上，不遮挡 */
 }

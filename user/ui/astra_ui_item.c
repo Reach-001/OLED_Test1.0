@@ -216,6 +216,9 @@ void astra_selector_go_next_item()
   {
     astra_selector.selected_item = astra_selector.selected_item->parent->child_list_item[0];
     astra_selector.selected_index = 0;
+    /* 回绕到列表首项时重置相机，防止旧偏移把顶部条目推出屏幕 */
+    astra_camera.y_camera = 0;
+    astra_camera.y_camera_trg = 0;
     return;
   }
   astra_selector.selected_item = astra_selector.selected_item->parent->child_list_item[++astra_selector.selected_index];
@@ -238,6 +241,9 @@ void astra_selector_go_prev_item()
   {
     astra_selector.selected_item = astra_selector.selected_item->parent->child_list_item[astra_selector.selected_item->parent->child_num - 1];
     astra_selector.selected_index = astra_selector.selected_item->parent->child_num - 1;
+    /* 回绕到列表末项时重置相机，防止旧偏移把顶部条目推出屏幕 */
+    astra_camera.y_camera = 0;
+    astra_camera.y_camera_trg = 0;
     return;
   }
   astra_selector.selected_item = astra_selector.selected_item->parent->child_list_item[--astra_selector.selected_index];

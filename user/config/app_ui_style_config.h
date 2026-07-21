@@ -78,13 +78,13 @@
 #define UI_INFO_SHADOW_COLOR      UI_COLOR_WHITE   /**< 信息提示阴影颜色（通常为半透白） */
 #define UI_INFO_BG_COLOR          UI_COLOR_BLACK   /**< 信息提示背景色 */
 #define UI_INFO_BOX_COLOR         UI_COLOR_WHITE   /**< 信息提示边框颜色 */
-#define UI_INFO_TEXT_COLOR        UI_COLOR_WHITE   /**< 信息提示文字颜色 */
+#define UI_INFO_TEXT_COLOR        UI_COLOR_BLACK   /**< 信息提示文字颜色（白底框上用黑字） */
 #define UI_INFO_ACCENT_COLOR       UI_COLOR_AMBER  /**< 信息提示强调色（如标题线或按钮） */
 
 #define UI_POPUP_SHADOW_COLOR     UI_COLOR_WHITE   /**< 弹出框阴影颜色 */
 #define UI_POPUP_BG_COLOR         UI_COLOR_BLACK   /**< 弹出框背景色 */
 #define UI_POPUP_BOX_COLOR        UI_COLOR_WHITE   /**< 弹出框边框颜色 */
-#define UI_POPUP_TEXT_COLOR       UI_COLOR_WHITE   /**< 弹出框文字颜色 */
+#define UI_POPUP_TEXT_COLOR       UI_COLOR_BLACK   /**< 弹出框文字颜色（白底框上用黑字） */
 #define UI_POPUP_ACCENT_COLOR      UI_COLOR_SKY    /**< 弹出框强调色 */
 
 /*===========================================================================

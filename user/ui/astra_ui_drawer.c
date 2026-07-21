@@ -440,41 +440,41 @@ void astra_draw_list_item()
       {
         astra_draw_list_icon(astra_selector.selected_item->parent->child_list_item[i]->icon, _x_item, _y_item);
 
-        /* 刻度线: icon右侧 → 数值左侧, 线上一个圆点指示位置 */
+        /* 图标 + 文字 + 刻度线 + 数值, 共一行。
+         * 文字宽 → 刻度线自动收缩, 长文字条短, 短文字条长。 */
         char _val_str[8] = {};
         sprintf(_val_str, "%d", *_sl->value);
-        int16_t _vw  = (int16_t)(strlen(_val_str) * 8);
-        int16_t _vx  = OLED_WIDTH - LIST_ITEM_RIGHT_MARGIN - _vw + 10;
-        int16_t bar_x = 24;
-        int16_t bar_w = _vx - bar_x - 8;
+        int16_t _vw     = (int16_t)(strlen(_val_str) * 8);
+        int16_t _txt_w  = oled_get_UTF8_width(astra_selector.selected_item->parent->child_list_item[i]->content);
+        int16_t bar_gap = 6;                                          /* 文字与刻度线间隙 */
+        int16_t bar_x   = 10 + _x_item + _txt_w + bar_gap;           /* 文字末尾 + 间隙 */
+        int16_t bar_w   = OLED_WIDTH - bar_x - _vw - 22;             /* 右侧留数值空间 */
 
-        /* 位置点 x 坐标 */
-        int16_t dot;
-        if (_sl->value_max > _sl->value_min)
-          dot = bar_x + (int16_t)((int32_t)(*_sl->value - _sl->value_min) * (bar_w - 4)
-                                / (_sl->value_max - _sl->value_min));
-        else dot = bar_x + bar_w / 2;
-        if (dot < bar_x + 2) dot = bar_x + 2;
-        if (dot > bar_x + bar_w - 2) dot = bar_x + bar_w - 2;
+        /* 刻度线太窄则不画 (文字太长撑满了) */
+        if (bar_w >= 20)
+        {
+          int16_t line_y = _baseline + 3;
+          int16_t dot;
+          if (_sl->value_max > _sl->value_min)
+            dot = bar_x + (int16_t)((int32_t)(*_sl->value - _sl->value_min) * (bar_w - 4)
+                                  / (_sl->value_max - _sl->value_min));
+          else dot = bar_x + bar_w / 2;
+          if (dot < bar_x + 2) dot = bar_x + 2;
+          if (dot > bar_x + bar_w - 2) dot = bar_x + bar_w - 2;
 
-        int16_t line_y = _baseline + 3;  /* 文字基线下方3px, 不挤占间距 */
+          oled_set_draw_color(UI_COLOR_GRAY);
+          oled_draw_H_line(bar_x, line_y, bar_w);
+          oled_set_draw_color(_c);
+          oled_draw_box(dot, line_y - 1, 4, 3);
 
-        /* 细刻度线 */
-        oled_set_draw_color(UI_COLOR_GRAY);
-        oled_draw_H_line(bar_x, line_y, bar_w);
-
-        /* 小方块刻度点 (3x3, 居中于刻度线上) */
-        oled_set_draw_color(_c);
-        oled_draw_box(dot, line_y - 1, 4, 3);
-
-        /* 数值 */
-        st7789_set_font((const void*)&font_8x16);
-        oled_set_draw_color(_c);
-        if (_sl->is_confirmed && ((get_ticks() / 500) & 1))
-          ;  /* 确认态闪烁: 半周期不画 */
-        else
-          oled_draw_str(_vx + 2, _baseline, _val_str);
-        st7789_set_font(astra_default_font);
+          /* 数值在刻度线右侧 */
+          int16_t _vx = bar_x + bar_w + 6;
+          st7789_set_font((const void*)&font_8x16);
+          oled_set_draw_color(_c);
+          if (!(_sl->is_confirmed && ((get_ticks() / 500) & 1)))
+            oled_draw_str(_vx + 2, _baseline, _val_str);
+          st7789_set_font(astra_default_font);
+        }
       }
     }
     /* ---- 用户自定义项 / 未知类型 ---- */

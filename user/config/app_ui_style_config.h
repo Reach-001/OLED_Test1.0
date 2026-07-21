@@ -70,8 +70,9 @@
 #define UI_SELECTOR_TEXT_PADDING   20               /**< 普通选项选择框水平内边距 */
 #define UI_SELECTOR_FULL_MARGIN    32               /**< 开关/滑块选择框左右总预留 */
 #define UI_SELECTOR_FRAME_COLOR    UI_COLOR_WHITE   /**< 选择框边框颜色 */
-#define UI_SELECTOR_FILL_ENABLE    1                /**< 选择框实体填充开关 (1=实体, 0=仅线框) */
-#define UI_SELECTOR_FILL_COLOR     UI_COLOR_GRAY    /**< 选择框填充颜色 (实体模式下) */
+#define UI_SELECTOR_FILL_ENABLE    1                /**< 选择框实体填充开关 (1=隔行灰底, 0=仅线框) */
+#define UI_SELECTOR_FILL_COLOR     UI_COLOR_GRAY    /**< 选择框填充颜色 (未使用, RGB565 overlay) */
+#define UI_SELECTOR_ACCENT_COLOR   UI_COLOR_SKY     /**< 选择框 RGB565 强调边框色 */
 
 /*===========================================================================
  * 弹出提示框（信息提示 / 确认框）配置

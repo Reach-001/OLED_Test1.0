@@ -219,20 +219,19 @@ void task_ui(void)
 void task_key(void)
 {
     bsp_key_scan();
-    app_ui_handle_key(
-        bsp_key_get_state(BSP_KEY_1),
-        bsp_key_get_event(BSP_KEY_1),
-        task_get_ms());
-    bsp_key_clear_event(BSP_KEY_1);
 
-    if (bsp_key_get_event(BSP_KEY_2) == KEY_EVENT_PRESS)
+    /* 三个按键统一路由到 UI 处理 */
+    for (uint8 i = BSP_KEY_1; i < BSP_KEY_NUM; i++)
     {
-        bsp_key_clear_event(BSP_KEY_2);
-    }
-
-    if (bsp_key_get_event(BSP_KEY_3) == KEY_EVENT_PRESS)
-    {
-        bsp_key_clear_event(BSP_KEY_3);
+        bsp_key_event_enum evt = bsp_key_get_event((bsp_key_id_enum)i);
+        if (evt != KEY_EVENT_NONE)
+        {
+            app_ui_handle_key((bsp_key_id_enum)i,
+                              bsp_key_get_state((bsp_key_id_enum)i),
+                              evt,
+                              task_get_ms());
+            bsp_key_clear_event((bsp_key_id_enum)i);
+        }
     }
 }
 

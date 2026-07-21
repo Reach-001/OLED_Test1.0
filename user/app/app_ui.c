@@ -20,7 +20,8 @@
 #include "astra_ui_draw_driver.h"
 #include "app_control.h"
 #include "app_task.h"
-#include "zf_driver_uart.h"
+#include "app_uart.h"
+#include "boot_logo_bitmap.h"
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -29,127 +30,68 @@
  *===========================================================================*/
 
 /**
- * @brief 绘制开机 Logo — 赛车 + 标题 + 进度条
- * @note 调用后阻塞约 2 秒，展示动画后自动进入主菜单
+ * @brief 绘制竞赛 Logo 彩图
+ * @note  开机彩图直接写入 ST7789 GRAM，避免受 1-bit UI 帧缓冲限制。
+ */
+static void ui_draw_boot_logo_image(int16_t x, int16_t y)
+{
+    const uint16_t width = BOOT_LOGO_BITMAP_WIDTH;
+    const uint16_t height = BOOT_LOGO_BITMAP_HEIGHT;
+
+    st7789_set_window((uint16_t)x, (uint16_t)y,
+                      (uint16_t)(x + (int16_t)width - 1),
+                      (uint16_t)(y + (int16_t)height - 1));
+
+    uint32_t target_pixels = (uint32_t)width * height;
+    uint32_t written_pixels = 0;
+    uint32_t rle_offset = 0;
+
+    while (written_pixels < target_pixels && rle_offset < BOOT_LOGO_RLE4_SIZE)
+    {
+        uint8_t code = g_boot_logo_rle4[rle_offset++];
+        uint8_t color_index;
+        uint8_t count;
+
+        if (code & 0xF0U)
+        {
+            count = code >> 4;
+            color_index = code & 0x0FU;
+        }
+        else
+        {
+            color_index = code & 0x0FU;
+            count = g_boot_logo_rle4[rle_offset++];
+        }
+
+        uint32_t remain = target_pixels - written_pixels;
+        uint32_t draw_count = (count > remain) ? remain : count;
+
+        for (uint32_t i = 0; i < draw_count; i++)
+        {
+            st7789_write_data16(g_boot_logo_palette_rgb565[color_index]);
+        }
+
+        written_pixels += draw_count;
+    }
+}
+
+/**
+ * @brief 绘制开机 Logo — 电子设计竞赛黑底彩图
+ * @note 调用后阻塞约 1.3 秒，展示后自动进入主菜单。
  */
 static void ui_draw_boot_logo(void)
 {
-    int16_t cx = OLED_WIDTH  / 2;   /**< 屏幕水平中点 */
-    int16_t cy = OLED_HEIGHT / 2;   /**< 屏幕垂直中点 */
+    int16_t logo_x = (OLED_WIDTH - BOOT_LOGO_BITMAP_WIDTH) / 2;
+    int16_t logo_y = (OLED_HEIGHT - BOOT_LOGO_BITMAP_HEIGHT) / 2;
 
-    /* ---- 第1帧: 标题文字浮现 ---- */
+    st7789_set_buffer_mode(0);
     oled_clear_buffer();
-    oled_set_draw_color(UI_COLOR_WHITE);
+    ui_draw_boot_logo_image(logo_x, logo_y);
+    delay(1200);
 
-    /* 项目名称 */
-    st7789_set_font(astra_default_font);
-    oled_draw_UTF8(cx - 48, cy - 48, "Dian Sai");
-    oled_draw_UTF8(cx - 32, cy - 28, "2026");
-
-    /* 分割线 */
-    oled_draw_H_line(cx - 60, cy - 12, 120);
-
-    /* 平台信息 */
-    st7789_set_font(astra_default_font);
-    oled_draw_str(cx - 32, cy + 6, "MSPM0G3507");
-
-    oled_send_buffer();
-    delay(600);
-
-    /* ---- 第2帧: 赛车图标出现 ---- */
     oled_clear_buffer();
-    oled_set_draw_color(UI_COLOR_WHITE);
-    oled_draw_UTF8(cx - 48, cy - 48, "Dian Sai");
-    oled_draw_UTF8(cx - 32, cy - 28, "2026");
-    oled_draw_H_line(cx - 60, cy - 12, 120);
-
-    /* === 车身（简化赛车俯视图）=== */
-    int16_t car_y = cy + 10;
-
-    /* 底盘 */
-    oled_draw_R_box(cx - 50, car_y - 12, 100, 24, 6);
-
-    /* 车头（梯形，用横线叠加模拟） */
-    oled_draw_H_line(cx + 38, car_y - 15, 14);
-    oled_draw_H_line(cx + 36, car_y - 14, 16);
-    oled_draw_H_line(cx + 34, car_y - 13, 16);
-    oled_draw_H_line(cx + 38, car_y - 16, 12);
-
-    /* 尾翼 */
-    oled_draw_box(cx - 60, car_y - 18, 16, 4);
-
-    /* 前轮 */
-    oled_draw_box(cx + 34, car_y + 12, 12, 6);
-    oled_set_draw_color(UI_COLOR_BLACK);
-    oled_draw_box(cx + 37, car_y + 13, 6, 4);
-    oled_set_draw_color(UI_COLOR_WHITE);
-
-    /* 后轮 */
-    oled_draw_box(cx - 46, car_y + 12, 12, 6);
-    oled_set_draw_color(UI_COLOR_BLACK);
-    oled_draw_box(cx - 43, car_y + 13, 6, 4);
-    oled_set_draw_color(UI_COLOR_WHITE);
-
-    /* 车窗 */
-    oled_draw_box(cx - 10, car_y - 9, 18, 8);
-
-    oled_send_buffer();
-    delay(600);
-
-    /* ---- 第3帧: 进度条动画 ---- */
-    uint8_t bar_target = 120;
-
-    for (uint8_t step = 0; step <= bar_target; step += 4)
-    {
-        oled_clear_buffer();
-
-        /* 标题区 */
-        oled_set_draw_color(UI_COLOR_WHITE);
-        oled_draw_UTF8(cx - 48, cy - 48, "Dian Sai");
-        oled_draw_UTF8(cx - 32, cy - 28, "2026");
-        oled_draw_H_line(cx - 60, cy - 12, 120);
-
-        /* 赛车图标（简化版，复用帧2逻辑） */
-        oled_draw_R_box(cx - 50, car_y - 12, 100, 24, 6);
-        oled_draw_H_line(cx + 38, car_y - 15, 14);
-        oled_draw_H_line(cx + 36, car_y - 14, 16);
-        oled_draw_H_line(cx + 34, car_y - 13, 16);
-        oled_draw_H_line(cx + 38, car_y - 16, 12);
-        oled_draw_box(cx - 60, car_y - 18, 16, 4);
-        oled_draw_box(cx + 34, car_y + 12, 12, 6);
-        oled_set_draw_color(UI_COLOR_BLACK);
-        oled_draw_box(cx + 37, car_y + 13, 6, 4);
-        oled_set_draw_color(UI_COLOR_WHITE);
-        oled_draw_box(cx - 46, car_y + 12, 12, 6);
-        oled_set_draw_color(UI_COLOR_BLACK);
-        oled_draw_box(cx - 43, car_y + 13, 6, 4);
-        oled_set_draw_color(UI_COLOR_WHITE);
-        oled_draw_box(cx - 10, car_y - 9, 18, 8);
-
-        /* 进度条背景 */
-        oled_set_draw_color(UI_COLOR_GRAY);
-        oled_draw_frame(cx - 62, OLED_HEIGHT - 24, 124, 10);
-        oled_set_draw_color(UI_COLOR_BLACK);
-        oled_draw_box(cx - 60, OLED_HEIGHT - 22, 120, 6);
-
-        /* 进度条填充（渐变增长） */
-        oled_set_draw_color(UI_COLOR_WHITE);
-        oled_draw_box(cx - 60, OLED_HEIGHT - 22, step, 6);
-
-        oled_send_buffer();
-
-        /* 进度条速度控制: 前快后慢 ~500ms */
-        if (step < 60)      delay(15);
-        else if (step < 100) delay(20);
-        else                 delay(30);
-    }
-
-    /* 进度条填满后短暂停留 */
-    delay(200);
-
-    /* 清屏过渡 */
+    st7789_set_buffer_mode(1);
     oled_clear_buffer();
-    oled_send_buffer();
     delay(100);
 }
 
@@ -173,66 +115,67 @@ static int16_t s_ui_speed_ki = (int16_t)PID_SPEED_KI;
  * UART 四通道 — 进入后: 开关 + 详细参数
  *===========================================================================*/
 
-#define UI_UART_BAUD  115200
-
 static bool   s_uart_en[4] = { false, false, false, false };
-static bool   s_uart_ok[4] = { false, false, false, false };
 static uint8  s_uart_no     = 0;
-static uint32 s_uart_tx[4]  = { 0 };
-static uint32 s_uart_rx[4]  = { 0 };
 
-static void ui_uart_do_init(uint8 ch)
+static void ui_uart_sync(uint8 ch)
 {
-    uint32 tx = (ch==0)?UART0_TX_A0:(ch==1)?UART1_TX_B4:(ch==2)?UART2_TX_A21:UART3_TX_B12;
-    uint32 rx = (ch==0)?UART0_RX_A1:(ch==1)?UART1_RX_B5:(ch==2)?UART2_RX_A22:UART3_RX_B13;
-    uart_init((uart_index_enum)ch, UI_UART_BAUD, (uart_tx_pin_enum)tx, (uart_rx_pin_enum)rx);
-    s_uart_ok[ch] = true;
+    const app_uart_state_t *state = app_uart_get_state(ch);
+    if (state != NULL)
+        s_uart_en[ch] = state->enabled;
 }
 
 /* ===== 各通道 init — 记录通道号 ===== */
-static void ui_u0_in(void) { s_uart_no = 0; }
-static void ui_u1_in(void) { s_uart_no = 1; }
-static void ui_u2_in(void) { s_uart_no = 2; }
-static void ui_u3_in(void) { s_uart_no = 3; }
+static void ui_u0_in(void) { s_uart_no = 0; ui_uart_sync(0); }
+static void ui_u1_in(void) { s_uart_no = 1; ui_uart_sync(1); }
+static void ui_u2_in(void) { s_uart_no = 2; ui_uart_sync(2); }
+static void ui_u3_in(void) { s_uart_no = 3; ui_uart_sync(3); }
 static void ui_uart_out(void) {}
 
-/* ===== 开关回调 ===== */
-static void ui_u0_sw(void) { if(s_uart_en[0]&&!s_uart_ok[0])ui_uart_do_init(0); }
-static void ui_u1_sw(void) { if(s_uart_en[1]&&!s_uart_ok[1])ui_uart_do_init(1); }
-static void ui_u2_sw(void) { if(s_uart_en[2]&&!s_uart_ok[2])ui_uart_do_init(2); }
-static void ui_u3_sw(void) { if(s_uart_en[3]&&!s_uart_ok[3])ui_uart_do_init(3); }
+static void ui_uart_apply_enable(uint8 ch)
+{
+    if (app_uart_set_enable(ch, s_uart_en[ch]))
+        astra_push_info_bar(s_uart_en[ch] ? "UART ON" : "UART OFF", 700);
+    else
+        astra_push_info_bar("UART ERR", 900);
 
-/* ===== 引脚名 ===== */
-static const char *np(uint32 p) {
-    switch(p & 0xFFF) { case A0:return"A0";case A1:return"A1";case B4:return"B4";case B5:return"B5";case A21:return"A21";case A22:return"A22";case B12:return"B12";case B13:return"B13";default:return"?"; }
+    ui_uart_sync(ch);
 }
+
+static void ui_u0_sw(void) { ui_uart_apply_enable(0); }
+static void ui_u1_sw(void) { ui_uart_apply_enable(1); }
+static void ui_u2_sw(void) { ui_uart_apply_enable(2); }
+static void ui_u3_sw(void) { ui_uart_apply_enable(3); }
 
 /* ===== 信息页 loop ===== */
 static void ui_uart_info_loop(void)
 {
     uint8 c = s_uart_no;
-    uint32 tx=(c==0)?UART0_TX_A0:(c==1)?UART1_TX_B4:(c==2)?UART2_TX_A21:UART3_TX_B12;
-    uint32 rx=(c==0)?UART0_RX_A1:(c==1)?UART1_RX_B5:(c==2)?UART2_RX_A22:UART3_RX_B13;
+    const app_uart_state_t *state = app_uart_get_state(c);
+
+    if (state == NULL) return;
 
     st7789_set_font(astra_default_font);
     char b[32] = {};
 
     oled_set_draw_color(UI_COLOR_WHITE);
-    snprintf(b, sizeof(b), "UART%d  %s", c, s_uart_en[c]?"ON":"OFF");
+    snprintf(b, sizeof(b), "UART%d  %s", c, state->enabled ? "ON" : "OFF");
     oled_draw_UTF8(8, 22, b);
 
     oled_set_draw_color(UI_COLOR_GRAY);
-    snprintf(b, sizeof(b), "BAUD: %u", UI_UART_BAUD);
+    snprintf(b, sizeof(b), "BAUD: %u", state->baud);
     oled_draw_UTF8(8, 42, b);
-    snprintf(b, sizeof(b), "TX:%s RX:%s", np(tx), np(rx));
+    snprintf(b, sizeof(b), "TX:%s RX:%s",
+             app_uart_pin_name(state->tx_pin),
+             app_uart_pin_name(state->rx_pin));
     oled_draw_UTF8(8, 58, b);
 
     oled_set_draw_color(UI_COLOR_WHITE);
     oled_draw_H_line(8, 72, OLED_WIDTH - 16);
 
-    snprintf(b, sizeof(b), "TX: %u", s_uart_tx[c]);
+    snprintf(b, sizeof(b), "RX: %u", state->rx_count);
     oled_draw_UTF8(8, 90, b);
-    snprintf(b, sizeof(b), "RX: %u", s_uart_rx[c]);
+    snprintf(b, sizeof(b), "LAST: 0x%02X", state->last_rx);
     oled_draw_UTF8(8, 106, b);
 }
 
@@ -498,24 +441,17 @@ static void ui_build_astra_tree(void)
         astra_new_slider_item("Speed KI", &s_ui_speed_ki,
                               1, 0, 60, ui_sync_control_values, ui_apply_pid_values, slider_icon));
 
-    /* ===== UART — 每通道: 开关 + 参数 ===== */
-    astra_list_item_t *u0 = astra_new_list_item("UART0", switch_icon);
-    astra_list_item_t *u1 = astra_new_list_item("UART1", switch_icon);
-    astra_list_item_t *u2 = astra_new_list_item("UART2", switch_icon);
-    astra_list_item_t *u3 = astra_new_list_item("UART3", switch_icon);
+    /* ===== UART — 通道行自带开关，进入后只显示参数 ===== */
+    astra_list_item_t *u0 = astra_new_switch_item("UART0", &s_uart_en[0], ui_u0_in, ui_u0_sw, switch_icon);
+    astra_list_item_t *u1 = astra_new_switch_item("UART1", &s_uart_en[1], ui_u1_in, ui_u1_sw, switch_icon);
+    astra_list_item_t *u2 = astra_new_switch_item("UART2", &s_uart_en[2], ui_u2_in, ui_u2_sw, switch_icon);
+    astra_list_item_t *u3 = astra_new_switch_item("UART3", &s_uart_en[3], ui_u3_in, ui_u3_sw, switch_icon);
     ui_push_item(uart_page, u0); ui_push_item(uart_page, u1);
     ui_push_item(uart_page, u2); ui_push_item(uart_page, u3);
 
-    ui_push_item(u0, astra_new_switch_item("Enable", &s_uart_en[0], NULL, ui_u0_sw, switch_icon));
     ui_push_item(u0, astra_new_user_item("Params", ui_u0_in, ui_uart_info_loop, ui_uart_out, list_icon));
-
-    ui_push_item(u1, astra_new_switch_item("Enable", &s_uart_en[1], NULL, ui_u1_sw, switch_icon));
     ui_push_item(u1, astra_new_user_item("Params", ui_u1_in, ui_uart_info_loop, ui_uart_out, list_icon));
-
-    ui_push_item(u2, astra_new_switch_item("Enable", &s_uart_en[2], NULL, ui_u2_sw, switch_icon));
     ui_push_item(u2, astra_new_user_item("Params", ui_u2_in, ui_uart_info_loop, ui_uart_out, list_icon));
-
-    ui_push_item(u3, astra_new_switch_item("Enable", &s_uart_en[3], NULL, ui_u3_sw, switch_icon));
     ui_push_item(u3, astra_new_user_item("Params", ui_u3_in, ui_uart_info_loop, ui_uart_out, list_icon));
 
     /* ===== IMU Gyro ===== */
@@ -528,31 +464,43 @@ static void ui_build_astra_tree(void)
 }
 
 /*===========================================================================
- * 单键手势识别状态机
- *=========================================================================*/
-
-/** 上一次按键电平状态 */
-static uint8 s_key_prev_pressed = 0;
-
-/** 等待单击确认标志（第一次释放后 350ms 窗口内） */
-static uint8 s_wait_single = 0;
-
-/** 第二次按下已发生标志 */
-static uint8 s_second_press = 0;
-
-/** 第一次释放时间戳（ms） */
-static uint32 s_first_release_ms = 0;
-
-/** 第二次按下时间戳（ms） */
-static uint32 s_second_press_ms = 0;
+ * 三键交互逻辑: KEY1=下一个, KEY2=进入, KEY3=返回, KEY1长按=根菜单
+ *===========================================================================*/
 
 /**
- * @brief 重置到根菜单（组合键触发）
+ * @brief 按键事件处理
+ * @param key     按键编号 (BSP_KEY_1/2/3)
+ * @param pressed 当前电平 (1=按下)
+ * @param event   按键事件 (PRESS=单击, LONG_PRESS=长按)
+ * @param now_ms  当前毫秒时间戳 (保留, 备用)
  */
-static void ui_reset_to_root(void)
+void app_ui_handle_key(bsp_key_id_enum key, uint8 pressed, bsp_key_event_enum event, uint32 now_ms)
 {
-    astra_init_list();
-    astra_push_info_bar("MAIN", 600);
+    (void)pressed;
+    (void)now_ms;
+
+    if (event == KEY_EVENT_PRESS)
+    {
+        switch (key)
+        {
+            case BSP_KEY_1:  /* KEY1 单击 → 下一个选项 */
+                astra_selector_go_next_item();
+                break;
+            case BSP_KEY_2:  /* KEY2 单击 → 进入/确认 */
+                astra_selector_jump_to_selected_item();
+                break;
+            case BSP_KEY_3:  /* KEY3 单击 → 返回上一级 */
+                astra_selector_exit_current_item();
+                break;
+            default: break;
+        }
+    }
+    else if (event == KEY_EVENT_LONG_PRESS && key == BSP_KEY_1)
+    {
+        /* KEY1 长按 → 回到根菜单 */
+        astra_init_list();
+        astra_push_info_bar("MAIN", 600);
+    }
 }
 
 /*===========================================================================
@@ -565,80 +513,15 @@ static void ui_reset_to_root(void)
 void app_ui_init(void)
 {
     astra_ui_driver_init();
-
-    /* 开机 Logo 动画：赛车图标 + 进度条，约 2 秒 */
     ui_draw_boot_logo();
-
     ui_build_astra_tree();
-
     in_astra = true;
     astra_init_core();
     astra_push_info_bar("2026 Dian_Sai_Demo", 800);
 }
 
 /**
- * @brief 按键事件处理
- */
-void app_ui_handle_key(uint8 pressed, bsp_key_event_enum event, uint32 now_ms)
-{
-    /* 检测新的按下（边沿上升） */
-    if (pressed && !s_key_prev_pressed)
-    {
-        if (s_wait_single)
-        {
-            s_second_press = 1;
-            s_second_press_ms = now_ms;
-        }
-    }
-
-    if (event == KEY_EVENT_PRESS)
-    {
-        /* 按键释放事件 */
-        if (s_wait_single && (now_ms - s_first_release_ms <= 350))
-        {
-            /* 双击 → 进入当前项 */
-            astra_selector_jump_to_selected_item();
-            s_wait_single = 0;
-            s_second_press = 0;
-        }
-        else
-        {
-            /* 首次释放，进入等待单击状态 */
-            s_wait_single = 1;
-            s_second_press = 0;
-            s_first_release_ms = now_ms;
-        }
-    }
-    else if (event == KEY_EVENT_LONG_PRESS)
-    {
-        /* 长按事件 */
-        if (s_wait_single && s_second_press && (s_second_press_ms - s_first_release_ms <= 400))
-        {
-            /* 组合键 → 返回根菜单 */
-            ui_reset_to_root();
-        }
-        else
-        {
-            /* 普通长按 → 返回上一级 */
-            astra_selector_exit_current_item();
-        }
-        s_wait_single = 0;
-        s_second_press = 0;
-    }
-
-    /* 超时检测：单击 */
-    if (s_wait_single && !pressed && (now_ms - s_first_release_ms > 350))
-    {
-        astra_selector_go_next_item();
-        s_wait_single = 0;
-        s_second_press = 0;
-    }
-
-    s_key_prev_pressed = pressed;
-}
-
-/**
- * @brief UI 任务主循环（约 10ms 调用一次）
+ * @brief UI 任务主循环（约 20ms 调用一次）
  */
 void app_ui_task(void)
 {

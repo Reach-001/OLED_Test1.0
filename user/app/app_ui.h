@@ -10,6 +10,6 @@
 
 void app_ui_init(void);
 void app_ui_task(void);
-void app_ui_handle_key(uint8 pressed, bsp_key_event_enum event, uint32 now_ms);
+void app_ui_handle_key(bsp_key_id_enum key, uint8 pressed, bsp_key_event_enum event, uint32 now_ms);
 
 #endif /* _APP_UI_H_ */

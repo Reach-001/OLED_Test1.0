@@ -189,7 +189,7 @@ void astra_draw_exit_animation()
       if (j % 2 == 1) oled_draw_pixel(i, j);
     }
 
-  astra_exit_anim(&_temp_h, _temp_h_trg, 94);
+  astra_exit_anim(&_temp_h, _temp_h_trg, 98);  /* 高速沙漏动画 */
 
   /* 状态机推进 */
   if (astra_exit_animation_status == 0 && fabs(_temp_h - _temp_h_trg) <= 1.0f && fabs(_temp_h - (OLED_HEIGHT + 8)) <= 1.0f)
@@ -600,7 +600,8 @@ void astra_draw_selector()
 
 void astra_draw_color_overlay()
 {
-  if (!in_astra || astra_selector.selected_item == NULL || astra_is_in_user_item())
+  if (!in_astra || astra_selector.selected_item == NULL
+      || astra_is_in_user_item() || !astra_exit_animation_finished)
     return;
 
   st7789_set_buffer_mode(0);

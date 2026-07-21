@@ -253,7 +253,7 @@ void astra_selector_go_prev_item()
 
 bool astra_exit_animation_finished = true;
 
-static void astra_enter_child_item(astra_list_item_t *item)
+void astra_enter_child_item(astra_list_item_t *item)
 {
   if (item == NULL || item->child_num == 0) return;
 
@@ -299,10 +299,11 @@ void astra_selector_jump_to_selected_item()
   {
     astra_switch_item_t* _selected_switch_item = astra_to_switch_item(astra_selector.selected_item);
     *_selected_switch_item->value = !*_selected_switch_item->value;
+    if (_selected_switch_item->init_function)
+      _selected_switch_item->init_function();
     if (_selected_switch_item->exit_function)
       _selected_switch_item->exit_function();
-    if (astra_selector.selected_item->child_num > 0)
-      astra_enter_child_item(astra_selector.selected_item);
+    /* 只切换，不自动进入子页面。长按由外部调用 astra_enter_child_item。 */
     return;
   }
 

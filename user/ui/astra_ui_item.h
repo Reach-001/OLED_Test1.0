@@ -173,6 +173,7 @@ extern void astra_selector_go_next_item();
 extern void astra_selector_go_prev_item();
 extern void astra_selector_jump_to_selected_item();
 extern void astra_selector_exit_current_item();
+extern void astra_enter_child_item(astra_list_item_t *item);
 
 /*** 相机 ***/
 typedef struct astra_camera_t

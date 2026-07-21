@@ -112,70 +112,47 @@ static int16_t s_ui_speed_kp = (int16_t)PID_SPEED_KP;
 static int16_t s_ui_speed_ki = (int16_t)PID_SPEED_KI;
 
 /*===========================================================================
- * UART 四通道 — 进入后: 开关 + 详细参数
+ * UART 四通道 — 开关 + 长按进详情
  *===========================================================================*/
 
-static bool   s_uart_en[4] = { false, false, false, false };
-static uint8  s_uart_no     = 0;
+static bool  s_uart_en[4] = { false, false, false, false };
+static uint8 s_uart_no    = 0;
 
-static void ui_uart_sync(uint8 ch)
-{
-    const app_uart_state_t *state = app_uart_get_state(ch);
-    if (state != NULL)
-        s_uart_en[ch] = state->enabled;
-}
+/* ---- 选中开关时设置通道号 (init_function) ---- */
+static void ui_u0_in(void) { s_uart_no = 0; }
+static void ui_u1_in(void) { s_uart_no = 1; }
+static void ui_u2_in(void) { s_uart_no = 2; }
+static void ui_u3_in(void) { s_uart_no = 3; }
 
-/* ===== 各通道 init — 记录通道号 ===== */
-static void ui_u0_in(void) { s_uart_no = 0; ui_uart_sync(0); }
-static void ui_u1_in(void) { s_uart_no = 1; ui_uart_sync(1); }
-static void ui_u2_in(void) { s_uart_no = 2; ui_uart_sync(2); }
-static void ui_u3_in(void) { s_uart_no = 3; ui_uart_sync(3); }
-static void ui_uart_out(void) {}
+/* ---- KEY2 单击开关 → 翻转值 + 硬件初始化 ---- */
+static void ui_u0_sw(void) { app_uart_set_enable(0, s_uart_en[0]); }
+static void ui_u1_sw(void) { app_uart_set_enable(1, s_uart_en[1]); }
+static void ui_u2_sw(void) { app_uart_set_enable(2, s_uart_en[2]); }
+static void ui_u3_sw(void) { app_uart_set_enable(3, s_uart_en[3]); }
 
-static void ui_uart_apply_enable(uint8 ch)
-{
-    if (app_uart_set_enable(ch, s_uart_en[ch]))
-        astra_push_info_bar(s_uart_en[ch] ? "UART ON" : "UART OFF", 700);
-    else
-        astra_push_info_bar("UART ERR", 900);
-
-    ui_uart_sync(ch);
-}
-
-static void ui_u0_sw(void) { ui_uart_apply_enable(0); }
-static void ui_u1_sw(void) { ui_uart_apply_enable(1); }
-static void ui_u2_sw(void) { ui_uart_apply_enable(2); }
-static void ui_u3_sw(void) { ui_uart_apply_enable(3); }
-
-/* ===== 信息页 loop ===== */
+/* ---- 详情页 (KEY2 长按进入) ---- */
+static void ui_uart_exit(void) {}
 static void ui_uart_info_loop(void)
 {
     uint8 c = s_uart_no;
-    const app_uart_state_t *state = app_uart_get_state(c);
-
-    if (state == NULL) return;
+    const app_uart_state_t *st = app_uart_get_state(c);
+    if (st == NULL) return;
 
     st7789_set_font(astra_default_font);
     char b[32] = {};
-
     oled_set_draw_color(UI_COLOR_WHITE);
-    snprintf(b, sizeof(b), "UART%d  %s", c, state->enabled ? "ON" : "OFF");
+    snprintf(b, sizeof(b), "UART%d  %s", c, st->enabled ? "ON" : "OFF");
     oled_draw_UTF8(8, 22, b);
-
     oled_set_draw_color(UI_COLOR_GRAY);
-    snprintf(b, sizeof(b), "BAUD: %u", state->baud);
+    snprintf(b, sizeof(b), "BAUD: %u", st->baud);
     oled_draw_UTF8(8, 42, b);
-    snprintf(b, sizeof(b), "TX:%s RX:%s",
-             app_uart_pin_name(state->tx_pin),
-             app_uart_pin_name(state->rx_pin));
+    snprintf(b, sizeof(b), "TX:%s RX:%s", app_uart_pin_name(st->tx_pin), app_uart_pin_name(st->rx_pin));
     oled_draw_UTF8(8, 58, b);
-
     oled_set_draw_color(UI_COLOR_WHITE);
     oled_draw_H_line(8, 72, OLED_WIDTH - 16);
-
-    snprintf(b, sizeof(b), "RX: %u", state->rx_count);
+    snprintf(b, sizeof(b), "RX: %u", st->rx_count);
     oled_draw_UTF8(8, 90, b);
-    snprintf(b, sizeof(b), "LAST: 0x%02X", state->last_rx);
+    snprintf(b, sizeof(b), "LAST: 0x%02X", st->last_rx);
     oled_draw_UTF8(8, 106, b);
 }
 
@@ -441,25 +418,19 @@ static void ui_build_astra_tree(void)
         astra_new_slider_item("Speed KI", &s_ui_speed_ki,
                               1, 0, 60, ui_sync_control_values, ui_apply_pid_values, slider_icon));
 
-    /* ===== UART ===== */
-    astra_list_item_t *u0 = astra_new_list_item("UART0", switch_icon);
-    astra_list_item_t *u1 = astra_new_list_item("UART1", switch_icon);
-    astra_list_item_t *u2 = astra_new_list_item("UART2", switch_icon);
-    astra_list_item_t *u3 = astra_new_list_item("UART3", switch_icon);
+    /* ===== UART — 4开关，长按进详情 ===== */
+    astra_list_item_t *u0 = astra_new_switch_item("UART0", &s_uart_en[0], ui_u0_in, ui_u0_sw, switch_icon);
+    astra_list_item_t *u1 = astra_new_switch_item("UART1", &s_uart_en[1], ui_u1_in, ui_u1_sw, switch_icon);
+    astra_list_item_t *u2 = astra_new_switch_item("UART2", &s_uart_en[2], ui_u2_in, ui_u2_sw, switch_icon);
+    astra_list_item_t *u3 = astra_new_switch_item("UART3", &s_uart_en[3], ui_u3_in, ui_u3_sw, switch_icon);
     ui_push_item(uart_page, u0); ui_push_item(uart_page, u1);
     ui_push_item(uart_page, u2); ui_push_item(uart_page, u3);
 
-    ui_push_item(u0, astra_new_switch_item("Enable", &s_uart_en[0], ui_u0_in, ui_u0_sw, switch_icon));
-    ui_push_item(u0, astra_new_user_item("Params", ui_u0_in, ui_uart_info_loop, ui_uart_out, list_icon));
-
-    ui_push_item(u1, astra_new_switch_item("Enable", &s_uart_en[1], ui_u1_in, ui_u1_sw, switch_icon));
-    ui_push_item(u1, astra_new_user_item("Params", ui_u1_in, ui_uart_info_loop, ui_uart_out, list_icon));
-
-    ui_push_item(u2, astra_new_switch_item("Enable", &s_uart_en[2], ui_u2_in, ui_u2_sw, switch_icon));
-    ui_push_item(u2, astra_new_user_item("Params", ui_u2_in, ui_uart_info_loop, ui_uart_out, list_icon));
-
-    ui_push_item(u3, astra_new_switch_item("Enable", &s_uart_en[3], ui_u3_in, ui_u3_sw, switch_icon));
-    ui_push_item(u3, astra_new_user_item("Params", ui_u3_in, ui_uart_info_loop, ui_uart_out, list_icon));
+    /* 每个开关底下挂详情页，KEY2 长按进入 */
+    ui_push_item(u0, astra_new_user_item("Detail", ui_u0_in, ui_uart_info_loop, ui_uart_exit, list_icon));
+    ui_push_item(u1, astra_new_user_item("Detail", ui_u1_in, ui_uart_info_loop, ui_uart_exit, list_icon));
+    ui_push_item(u2, astra_new_user_item("Detail", ui_u2_in, ui_uart_info_loop, ui_uart_exit, list_icon));
+    ui_push_item(u3, astra_new_user_item("Detail", ui_u3_in, ui_uart_info_loop, ui_uart_exit, list_icon));
 
     /* ===== IMU Gyro ===== */
     ui_push_item(imu_page,
@@ -506,13 +477,11 @@ void app_ui_handle_key(bsp_key_id_enum key, uint8 pressed, bsp_key_event_enum ev
                 astra_init_list();
                 astra_push_info_bar("MAIN", 600);
                 break;
-            case BSP_KEY_2:  /* KEY2 长按 → 切换当前开关（不进入子菜单） */
+            case BSP_KEY_2:  /* KEY2 长按 → 进入详情页（跳过开关切换） */
                 if (astra_selector.selected_item != NULL
-                    && astra_selector.selected_item->type == switch_item)
+                    && astra_selector.selected_item->child_num > 0)
                 {
-                    astra_switch_item_t *sw = astra_to_switch_item(astra_selector.selected_item);
-                    *sw->value = !*sw->value;
-                    if (sw->exit_function) sw->exit_function();
+                    astra_enter_child_item(astra_selector.selected_item);
                 }
                 break;
             default: break;

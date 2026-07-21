@@ -471,7 +471,13 @@ void astra_draw_list_item()
         /* 数值 */
         st7789_set_font((const void*)&font_8x16);
         oled_set_draw_color(_c);
-        oled_draw_str(_vx + 2, _baseline, _val_str);
+        if (_sl->is_confirmed) {
+          /* 确认态闪烁: 500ms 周期显隐 */
+          if ((get_ticks() / 500) & 1)
+            oled_draw_str(_vx + 2, _baseline, _val_str);
+        } else {
+          oled_draw_str(_vx + 2, _baseline, _val_str);
+        }
         st7789_set_font(astra_default_font);
       }
     }

@@ -57,7 +57,9 @@ bool app_uart_set_enable(uint8 ch, bool enable)
 
     s_uart[ch].enabled = enable;
 
-    /* 硬件层真正开关 UART 外设，不依赖软件标志 */
+    /* 硬件层开关 UART 外设。UART0 是系统 debug 串口，只设标志不关硬件。 */
+    if (ch == 0) return true;
+
     if (enable)
         DL_UART_Main_enable(uart_list[ch]);
     else if (s_uart[ch].inited)

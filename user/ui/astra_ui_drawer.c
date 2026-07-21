@@ -373,8 +373,14 @@ void astra_draw_list_item()
                       + astra_camera.y_camera;
     int16_t _y_item = _baseline - oled_get_str_height() / 2;
     bool _row_visible = astra_list_row_visible(_baseline);
+    bool _is_selected = (astra_selector.selected_item->parent->child_list_item[i]
+                        == astra_selector.selected_item);
 
     oled_set_draw_color(UI_LIST_TEXT_COLOR);
+
+    /* 选中项在填充底色上，控件用黑色绘制才可见 */
+    uint8 _ctrl_color = (_is_selected && UI_SELECTOR_FILL_ENABLE)
+                        ? UI_COLOR_BLACK : UI_LIST_TEXT_COLOR;
 
     /* ---- 列表项 (带箭头) ---- */
     if (astra_selector.selected_item->parent->child_list_item[i]->type == list_item)
@@ -395,6 +401,7 @@ void astra_draw_list_item()
 
         /* 开关指示器: 右侧小框 + 填充表示 ON/OFF */
         int16_t _sx = OLED_WIDTH - LIST_ITEM_RIGHT_MARGIN - 7;
+        oled_set_draw_color(_ctrl_color);
         oled_draw_frame(_sx, _y_item - 2, 11, 7);
         if (*_sw->value == true)
         {
@@ -439,11 +446,11 @@ void astra_draw_list_item()
 
           if (_visible)
           {
-            oled_set_draw_color(UI_SLIDER_VALUE_BOX_COLOR);
+            oled_set_draw_color(_ctrl_color);
             oled_draw_R_box(_vx, _y_item - 4, oled_get_UTF8_width(_val_str) + 4, oled_get_str_height() - 2, 1);
           }
 
-          oled_set_draw_color(UI_SLIDER_VALUE_TEXT_COLOR);
+          oled_set_draw_color(_is_selected ? UI_COLOR_BLACK : UI_SLIDER_VALUE_TEXT_COLOR);
           oled_draw_str(_vx + 2, _y_item + oled_get_str_height() / 2, _val_str);
 
           if (_tick - _last_tick >= 1000)

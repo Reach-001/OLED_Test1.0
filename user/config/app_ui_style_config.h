@@ -40,9 +40,9 @@
  * 标题栏配置
  *=========================================================================*/
 
-#define UI_TITLE_ENABLE            0   /**< 标题栏启用标志（1=启用，0=禁用） */
-#define UI_TITLE_TEXT_COLOR        UI_COLOR_WHITE   /**< 标题文字颜色 */
-#define UI_TITLE_LINE_COLOR        UI_COLOR_AMBER   /**< 标题栏底部横线颜色 */
+#define UI_TITLE_ENABLE            1   /**< 标题栏启用标志（1=启用，0=禁用） */
+#define UI_TITLE_TEXT_COLOR        3  /**< 标题文字颜色 */
+#define UI_TITLE_LINE_COLOR        4   /**< 标题栏底部横线颜色 */
 #define UI_TITLE_AREA_HEIGHT       20               /**< 标题栏占用高度 */
 #define UI_TITLE_BASELINE_Y        15               /**< 标题文字基线纵坐标（相对于屏幕顶部） */
 
@@ -59,7 +59,7 @@
 #define UI_LIST_MAX_CHILD_NUM      16               /**< 单个列表最多子项数 */
 #define UI_SCROLLBAR_COLOR         UI_COLOR_WHITE   /**< 滚动条基本颜色（轨道） */
 #define UI_SCROLLBAR_ACCENT_ENABLE 1                /**< 滚动条强调色启用标志（1=启用） */
-#define UI_SCROLLBAR_ACCENT_COLOR  UI_COLOR_MINT    /**< 滚动条滑块/强调色 */
+#define UI_SCROLLBAR_ACCENT_COLOR  3    /**< 滚动条滑块/强调色 */
 
 /*===========================================================================
  * 选择框（高亮指示器）配置

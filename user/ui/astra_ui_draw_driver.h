@@ -37,14 +37,6 @@
 #endif
 
 /*===========================================================================
- * 绘制颜色定义 (RGB565)
- *===========================================================================*/
-
-#define COLOR_BLACK   0x0000  /**< 黑色 */
-#define COLOR_WHITE   0xFFFF  /**< 白色 */
-#define COLOR_GRAY    0x8410  /**< 灰色 (用于 XOR 效果) */
-
-/*===========================================================================
  * 字体引用 — 指向 st7789_font.h 定义的字体结构
  *===========================================================================*/
 
@@ -75,10 +67,10 @@
 /** @brief 设置当前字体 */
 #define oled_set_font(font)             st7789_set_font((void*)(font))
 
-/** @brief 绘制 ASCII 字符串 (x,y) 左上角坐标 */
+/** @brief 绘制 ASCII 字符串，y 为 Astra/u8g2 兼容基线坐标 */
 #define oled_draw_str(x, y, str)        st7789_draw_str((int16_t)(x), (int16_t)(y), (const char*)(str))
 
-/** @brief 绘制 UTF-8 字符串 (支持中英文混排) */
+/** @brief 绘制 UTF-8 字符串，y 为 Astra/u8g2 兼容基线坐标 */
 #define oled_draw_UTF8(x, y, str)       st7789_draw_utf8((int16_t)(x), (int16_t)(y), (const char*)(str))
 
 /** @brief 获取 ASCII 字符串像素宽度 */
@@ -129,9 +121,14 @@
 #define oled_draw_bMP(x, y, w, h, bmp)  st7789_draw_bitmap((int16_t)(x), (int16_t)(y), (int16_t)(w), (int16_t)(h), (const uint8_t*)(bmp))
 
 /** @brief 设置绘制颜色
- *  @param color  0 = 黑色, 1 = 白色, 2 = XOR/灰色
+ *  @param color  缓冲模式下 0=背景，非 0=前景；直写模式下使用 RGB565 色表。
  */
 #define oled_set_draw_color(color)      st7789_set_draw_color((uint8_t)(color))
+
+/** @brief 切换帧缓冲模式
+ *  @note  1 = 缓冲绘制, 0 = 直接绘制
+ */
+void st7789_set_buffer_mode(uint8_t enable);
 
 /** @brief 设置字体绘制模式 (1=透明背景, 0=实色背景) */
 #define oled_set_font_mode(mode)        st7789_set_font_mode((uint8_t)(mode))
@@ -146,7 +143,7 @@
 #define oled_send_buffer()              st7789_send_buffer()
 
 /** @brief 发送局部缓冲区到屏幕 */
-#define oled_send_area_buffer(x, y, w, h) ((void)0)
+#define oled_send_area_buffer(x, y, w, h) st7789_send_area_buffer((int16_t)(x), (int16_t)(y), (int16_t)(w), (int16_t)(h))
 
 /*===========================================================================
  * 驱动函数声明
@@ -165,6 +162,7 @@ void st7789_set_font_mode(uint8_t mode);
 void st7789_set_font_dir(uint8_t dir);
 void st7789_clear_screen(void);
 void st7789_send_buffer(void);
+void st7789_send_area_buffer(int16_t x, int16_t y, int16_t w, int16_t h);
 
 /* --- 像素/几何绘制 --- */
 void st7789_draw_pixel(int16_t x, int16_t y);

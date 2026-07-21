@@ -5,7 +5,7 @@
  * @note    使用 MSPM0 硬件 SPI1, SCK=PB9, MOSI=PB8
  * @note    默认使用 1-bit 帧缓冲，oled_send_buffer() 时转换为 RGB565 写屏
  *
- * 移植说明:
+ * @par 移植说明:
  *   1. 修改引脚宏定义 (SCL/MOSI/RES/DC/CS/BLK)
  *   2. 修改 GPIO 操作宏 (适配 MSPM0 的 DL_GPIO_* 或 STM32 的 GPIO_*)
  *   3. 实现 delay_ms / get_ticks (基于 SysTick 或定时器)
@@ -14,49 +14,53 @@
 
 #include "board_config.h"
 #include "astra_ui_draw_driver.h"
+#include "app_ui_style_config.h"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
 
-/* ---- GPIO operations ---- */
+/*===========================================================================
+ * GPIO 操作宏（需根据实际硬件平台修改）
+ *=========================================================================*/
+
 #ifndef LCD_RES_Clr
-#define LCD_RES_Clr()   gpio_low(LCD_RES_PIN)
+#define LCD_RES_Clr()   gpio_low(LCD_RES_PIN)   /**< 复位引脚拉低 */
 #endif
 #ifndef LCD_RES_Set
-#define LCD_RES_Set()   gpio_high(LCD_RES_PIN)
+#define LCD_RES_Set()   gpio_high(LCD_RES_PIN)  /**< 复位引脚拉高 */
 #endif
 #ifndef LCD_DC_Clr
-#define LCD_DC_Clr()    gpio_low(LCD_DC_PIN)
+#define LCD_DC_Clr()    gpio_low(LCD_DC_PIN)    /**< 数据/命令选择引脚拉低（命令） */
 #endif
 #ifndef LCD_DC_Set
-#define LCD_DC_Set()    gpio_high(LCD_DC_PIN)
+#define LCD_DC_Set()    gpio_high(LCD_DC_PIN)   /**< 数据/命令选择引脚拉高（数据） */
 #endif
 #ifndef LCD_CS_Clr
-#define LCD_CS_Clr()    gpio_low(LCD_CS_PIN)
+#define LCD_CS_Clr()    gpio_low(LCD_CS_PIN)    /**< 片选引脚拉低（选中） */
 #endif
 #ifndef LCD_CS_Set
-#define LCD_CS_Set()    gpio_high(LCD_CS_PIN)
+#define LCD_CS_Set()    gpio_high(LCD_CS_PIN)   /**< 片选引脚拉高（释放） */
 #endif
 #ifndef LCD_BLK_Clr
-#define LCD_BLK_Clr()   gpio_low(LCD_BLK_PIN)
+#define LCD_BLK_Clr()   gpio_low(LCD_BLK_PIN)   /**< 背光引脚拉低（关背光） */
 #endif
 #ifndef LCD_BLK_Set
-#define LCD_BLK_Set()   gpio_high(LCD_BLK_PIN)
+#define LCD_BLK_Set()   gpio_high(LCD_BLK_PIN)  /**< 背光引脚拉高（开背光） */
 #endif
 
 /*===========================================================================
  * 屏幕尺寸与偏移 (与厂家驱动严格一致)
  *===========================================================================*/
 
-/** @brief 两块屏都使用厂家横屏模式2。 */
+/** @brief 两块屏都使用厂家横屏模式2（MADCTL=0x70） */
 #define USE_HORIZONTAL  2
 
 #if LCD_PANEL_TYPE == LCD_PANEL_147_ST7789
-/** @brief 1.47 寸 ST7789 横屏模式2偏移。 */
+/** @brief 1.47 寸 ST7789 横屏模式2偏移（厂家提供） */
 #define TFT_X_OFFSET 0
 #define TFT_Y_OFFSET 34
 #elif LCD_PANEL_TYPE == LCD_PANEL_114_ST7789
-/** @brief 1.14 寸 ST7789 横屏模式2偏移，来自厂家 LCD_Address_Set。 */
+/** @brief 1.14 寸 ST7789 横屏模式2偏移（厂家提供） */
 #define TFT_X_OFFSET 40
 #define TFT_Y_OFFSET 53
 #else
@@ -67,9 +71,13 @@
  * 颜色定义 (RGB565)
  *===========================================================================*/
 
-#define COLOR_BLACK   0x0000
-#define COLOR_WHITE   0xFFFF
-#define COLOR_GRAY    0x8410      /**< 灰色, 选择器 XOR 效果 */
+#define COLOR_BLACK   UI_RGB565_BLACK
+#define COLOR_WHITE   UI_RGB565_WHITE
+#define COLOR_GRAY    UI_RGB565_GRAY
+#define COLOR_SKY     UI_RGB565_SKY
+#define COLOR_MINT    UI_RGB565_MINT
+#define COLOR_AMBER   UI_RGB565_AMBER
+#define COLOR_ROSE    UI_RGB565_ROSE
 
 /*===========================================================================
  * MADCTL 值 — 厂家驱动已验证
@@ -80,54 +88,62 @@
  *   USE_HORIZONTAL=2  → 0x70  (横屏, 当前配置)
  *   USE_HORIZONTAL=3  → 0xA0
  *===========================================================================*/
-#define ST7789_MADCTL_VALUE  0x70
+#define ST7789_MADCTL_VALUE  0x70   /**< 横屏模式控制字 */
 
 /*===========================================================================
- * ST7789 命令
+ * ST7789 命令码
  *===========================================================================*/
 
-#define ST7789_SLPOUT   0x11
-#define ST7789_INVON    0x21
-#define ST7789_DISPON   0x29
-#define ST7789_CASET    0x2A
-#define ST7789_RASET    0x2B
-#define ST7789_RAMWR    0x2C
-#define ST7789_MADCTL   0x36
-#define ST7789_COLMOD   0x3A
+#define ST7789_SLPOUT   0x11  /**< 退出睡眠 */
+#define ST7789_INVON    0x21  /**< 反转显示开启（某些模块需要） */
+#define ST7789_DISPON   0x29  /**< 开启显示 */
+#define ST7789_CASET    0x2A  /**< 列地址设置 */
+#define ST7789_RASET    0x2B  /**< 行地址设置 */
+#define ST7789_RAMWR    0x2C  /**< 写显存 */
+#define ST7789_MADCTL   0x36  /**< 内存访问控制 */
+#define ST7789_COLMOD   0x3A  /**< 色彩模式 */
 
 /*===========================================================================
- * 内部状态
+ * 内部状态变量
  *===========================================================================*/
 
-static uint16_t g_fg_color   = COLOR_WHITE;
-static uint16_t g_bg_color   = COLOR_BLACK;
-static uint8_t  g_draw_color = 1;
-static uint8_t  g_font_mode  = 1;
-static uint8_t  g_font_dir   = 0;
-static const void *g_current_font = NULL;
-static bool     g_is_cn_font  = false;
+static uint16_t g_fg_color   = COLOR_WHITE;   /**< 当前前景色（RGB565） */
+static uint16_t g_bg_color   = COLOR_BLACK;   /**< 当前背景色（RGB565） */
+static uint8_t  g_draw_color = 1;             /**< 绘制颜色编号（0~6，对应预定义颜色） */
+static uint8_t  g_font_mode  = 1;             /**< 字体模式：0=不透明背景，1=透明背景 */
+static uint8_t  g_font_dir   = 0;             /**< 字体方向（保留） */
+static const void *g_current_font = NULL;     /**< 当前使用的字体指针（ASCII或中文） */
+static bool     g_is_cn_font  = false;        /**< 当前是否为中文字体 */
 
 enum
 {
-    ST7789_FB_STRIDE = (OLED_WIDTH + 7) / 8,
-    ST7789_FB_SIZE = ST7789_FB_STRIDE * OLED_HEIGHT,
+    ST7789_FB_STRIDE = (OLED_WIDTH + 7) / 8,   /**< 1-bit帧缓冲每行字节数 */
+    ST7789_FB_SIZE = ST7789_FB_STRIDE * OLED_HEIGHT, /**< 帧缓冲总大小 */
 };
 
-static uint8_t g_framebuffer[ST7789_FB_SIZE];
-static uint8_t g_buffer_mode = 1;
+static uint8_t g_framebuffer[ST7789_FB_SIZE];      /**< 当前帧缓冲（1-bit） */
+static uint8_t g_last_framebuffer[ST7789_FB_SIZE]; /**< 上一帧缓冲，用于差分刷新 */
+static uint8_t g_buffer_mode = 1;                  /**< 缓冲模式：1=使用1-bit缓冲，0=直写GRAM */
+static bool    g_last_framebuffer_valid = false;   /**< 上一帧是否有效 */
 
 /*===========================================================================
- * 硬件 SPI 底层
+ * 硬件 SPI 底层函数
  *===========================================================================*/
 
 /**
- * @brief 硬件 SPI 发送一个字节 (MSB 优先, Mode 0)
+ * @brief 硬件 SPI 发送一个字节 (MSB 优先, 模式0)
+ * @param dat 要发送的字节
  */
 static void lcd_write_byte(uint8_t dat)
 {
     spi_write_8bit(LCD_SPI_INDEX, dat);
 }
 
+/**
+ * @brief 硬件 SPI 发送多个字节
+ * @param data 数据缓冲区
+ * @param len  字节数
+ */
 static void lcd_write_bytes(const uint8_t *data, uint32_t len)
 {
     spi_write_8bit_array(LCD_SPI_INDEX, data, len);
@@ -137,6 +153,10 @@ static void lcd_write_bytes(const uint8_t *data, uint32_t len)
  * ST7789 命令/数据写入 — 接口与原厂 LCD_WR_REG/LCD_WR_DATA 一致
  *===========================================================================*/
 
+/**
+ * @brief 写入命令字节
+ * @param cmd 命令码
+ */
 void st7789_write_cmd(uint8_t cmd)
 {
     LCD_DC_Clr();                       /* DC=0: 命令模式 */
@@ -146,6 +166,10 @@ void st7789_write_cmd(uint8_t cmd)
     LCD_DC_Set();                       /* 恢复 DC=1 (数据模式) */
 }
 
+/**
+ * @brief 写入8位数据
+ * @param data 数据字节
+ */
 void st7789_write_data8(uint8_t data)
 {
     LCD_DC_Set();                       /* DC=1: 数据模式 */
@@ -154,6 +178,10 @@ void st7789_write_data8(uint8_t data)
     LCD_CS_Set();
 }
 
+/**
+ * @brief 写入16位数据（高字节在前）
+ * @param data 16位数据（RGB565颜色值）
+ */
 void st7789_write_data16(uint16_t data)
 {
     LCD_DC_Set();
@@ -164,18 +192,26 @@ void st7789_write_data16(uint16_t data)
 }
 
 /*===========================================================================
- * 时间函数
+ * 时间函数（需适配平台）
  *===========================================================================*/
 
+/**
+ * @brief 获取系统运行毫秒数
+ * @return 当前毫秒值
+ */
 uint32_t st7789_get_ticks(void)
 {
-    extern uint32 task_get_ms(void);
+    extern uint32 task_get_ms(void);    /* 外部提供的系统时间函数 */
     return task_get_ms();
 }
 
+/**
+ * @brief 毫秒级延时
+ * @param ms 延时毫秒数
+ */
 void st7789_delay_ms(uint32_t ms)
 {
-    system_delay_ms(ms);
+    system_delay_ms(ms);                /* 外部提供的延时函数 */
 }
 
 /*===========================================================================
@@ -184,6 +220,10 @@ void st7789_delay_ms(uint32_t ms)
 
 /**
  * @brief 设置 ST7789 绘制窗口 (带列/行偏移校正)
+ * @param xs 起始列（0~OLED_WIDTH-1）
+ * @param ys 起始行（0~OLED_HEIGHT-1）
+ * @param xe 结束列（包含）
+ * @param ye 结束行（包含）
  * @note  偏移由 LCD_PANEL_TYPE 选择，避免换屏时只改分辨率导致错位。
  */
 void st7789_set_window(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye)
@@ -201,16 +241,19 @@ void st7789_set_window(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye)
 
 /**
  * @brief 连续填充 N 个 RGB565 像素 (快速批量写入)
+ * @param color RGB565颜色值
+ * @param count 像素数量
  */
 void st7789_fill_pixels(uint16_t color, uint32_t count)
 {
     uint8_t hi = color >> 8;
     uint8_t lo = color & 0xFF;
-    uint8_t buffer[128];
+    uint8_t buffer[128];                /* 本地缓冲，减少 SPI 发送次数 */
 
     LCD_DC_Set();
     LCD_CS_Clr();
 
+    /* 预填缓冲为颜色值（高字节+低字节交替） */
     for (uint32_t i = 0; i < sizeof(buffer); i += 2)
     {
         buffer[i] = hi;
@@ -227,11 +270,22 @@ void st7789_fill_pixels(uint16_t color, uint32_t count)
     LCD_CS_Set();
 }
 
+/**
+ * @brief 将单色位图（1-bit）转换为 RGB565 并刷到屏幕指定区域
+ * @param x      起始列
+ * @param y      起始行
+ * @param w      宽度
+ * @param h      高度
+ * @param bits   单色位图数据（每像素1bit，每行 stride 字节）
+ * @param stride 每行字节数（通常 ≥ w/8）
+ * @param fg     前景色（mask=1 的颜色）
+ * @param bg     背景色（mask=0 的颜色）
+ */
 void st7789_blit_mono(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
                       const uint8_t *bits, uint16_t stride,
                       uint16_t fg, uint16_t bg)
 {
-    static uint8_t buffer[512];
+    static uint8_t buffer[512];         /* 行缓冲，减少 SPI 调用 */
     uint32_t out = 0;
 
     if (bits == NULL || w == 0 || h == 0) return;
@@ -274,7 +328,7 @@ void st7789_blit_mono(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
  *===========================================================================*/
 
 /**
- * @brief SPI 与控制 GPIO 初始化
+ * @brief SPI 与控制 GPIO 初始化（适配平台）
  */
 static void lcd_gpio_init(void)
 {
@@ -287,6 +341,7 @@ static void lcd_gpio_init(void)
 
 /**
  * @brief ST7789 初始化序列 — 适配 1.14 寸 240×135 模块
+ * @note  根据屏幕类型编译不同的 Gamma 和电压参数
  */
 static void st7789_hardware_init(void)
 {
@@ -324,7 +379,8 @@ static void st7789_hardware_init(void)
     st7789_write_data8(0x35);
 
 #if LCD_PANEL_TYPE == LCD_PANEL_147_ST7789
-    st7789_write_cmd(0xBB);             /* VCOMS: 1.47 寸模块参数 */
+    /* 1.47 寸模块专用参数 */
+    st7789_write_cmd(0xBB);             /* VCOMS */
     st7789_write_data8(0x35);
 
     st7789_write_cmd(0xC0);             /* LCMCTRL */
@@ -381,7 +437,8 @@ static void st7789_hardware_init(void)
     st7789_write_data8(0x29);
     st7789_write_data8(0x32);
 #else
-    st7789_write_cmd(0xBB);             /* VCOMS: 1.14 寸模块参数 */
+    /* 1.14 寸模块专用参数 */
+    st7789_write_cmd(0xBB);             /* VCOMS */
     st7789_write_data8(0x32);
 
     st7789_write_cmd(0xC2);             /* VDVVRHEN */
@@ -444,6 +501,10 @@ static void st7789_hardware_init(void)
  * Astra UI 驱动初始化入口
  *===========================================================================*/
 
+/**
+ * @brief 初始化显示驱动并清屏
+ * @note 此函数在系统启动时调用一次
+ */
 void astra_ui_driver_init(void)
 {
     st7789_hardware_init();
@@ -461,6 +522,10 @@ void astra_ui_driver_init(void)
  * 颜色管理
  *===========================================================================*/
 
+/**
+ * @brief 设置当前绘图颜色（通过预定义编号）
+ * @param color 颜色编号（0~6），对应 UI_COLOR_xxx 宏
+ */
 void st7789_set_draw_color(uint8_t color)
 {
     g_draw_color = color;
@@ -469,13 +534,23 @@ void st7789_set_draw_color(uint8_t color)
         case 0:  g_fg_color = COLOR_BLACK; g_bg_color = COLOR_WHITE; break;
         case 1:  g_fg_color = COLOR_WHITE; g_bg_color = COLOR_BLACK; break;
         case 2:  g_fg_color = COLOR_GRAY;  g_bg_color = COLOR_BLACK; break;
+        case 3:  g_fg_color = COLOR_SKY;   g_bg_color = COLOR_BLACK; break;
+        case 4:  g_fg_color = COLOR_MINT;  g_bg_color = COLOR_BLACK; break;
+        case 5:  g_fg_color = COLOR_AMBER; g_bg_color = COLOR_BLACK; break;
+        case 6:  g_fg_color = COLOR_ROSE;  g_bg_color = COLOR_BLACK; break;
         default: g_fg_color = COLOR_WHITE; g_bg_color = COLOR_BLACK; break;
     }
 }
 
-void st7789_set_font_mode(uint8_t mode)  { g_font_mode = mode; }
-void st7789_set_font_dir(uint8_t dir)    { g_font_dir = dir; }
+void st7789_set_font_mode(uint8_t mode)  { g_font_mode = mode; }   /**< 设置字体模式（0=不透明，1=透明） */
+void st7789_set_font_dir(uint8_t dir)    { g_font_dir = dir; }     /**< 设置字体方向（保留） */
+void st7789_set_buffer_mode(uint8_t enable) { g_buffer_mode = enable ? 1 : 0; } /**< 启用/禁用缓冲模式 */
 
+/**
+ * @brief 在1-bit帧缓冲中画一个像素（内部函数）
+ * @param x,y   坐标
+ * @param color 缓冲模式下 0=清除，非 0=设置。RGB565 颜色只在直写模式生效。
+ */
 static void st7789_fb_pixel(int16_t x, int16_t y, uint8_t color)
 {
     uint32_t index;
@@ -488,6 +563,10 @@ static void st7789_fb_pixel(int16_t x, int16_t y, uint8_t color)
     else g_framebuffer[index] &= (uint8_t)~mask;
 }
 
+/**
+ * @brief 清屏（黑色）
+ * @note 缓冲模式下清除1-bit缓冲，直写模式下直接填充黑色到GRAM
+ */
 void st7789_clear_screen(void)
 {
     if (g_buffer_mode)
@@ -500,9 +579,79 @@ void st7789_clear_screen(void)
     st7789_fill_pixels(COLOR_BLACK, (uint32_t)OLED_WIDTH * OLED_HEIGHT);
 }
 
+/**
+ * @brief 将1-bit帧缓冲刷到屏幕（差分刷新，只更新变化区域）
+ * @note 如果上一帧无效则全屏刷新，否则计算差异区域并局部刷新
+ */
 void st7789_send_buffer(void)
 {
-    st7789_blit_mono(0, 0, OLED_WIDTH, OLED_HEIGHT,
+    if (!g_last_framebuffer_valid)
+    {
+        /* 首次刷新：全屏发送 */
+        st7789_blit_mono(0, 0, OLED_WIDTH, OLED_HEIGHT,
+                         g_framebuffer, ST7789_FB_STRIDE, COLOR_WHITE, COLOR_BLACK);
+        memcpy(g_last_framebuffer, g_framebuffer, sizeof(g_framebuffer));
+        g_last_framebuffer_valid = true;
+        return;
+    }
+
+    /* 计算变化区域边界（按字节比较，提高效率） */
+    uint16_t min_x_byte = ST7789_FB_STRIDE;
+    uint16_t max_x_byte = 0;
+    uint16_t min_y = OLED_HEIGHT;
+    uint16_t max_y = 0;
+
+    for (uint16_t y = 0; y < OLED_HEIGHT; y++)
+    {
+        uint32_t row_offset = (uint32_t)y * ST7789_FB_STRIDE;
+
+        for (uint16_t x_byte = 0; x_byte < ST7789_FB_STRIDE; x_byte++)
+        {
+            uint32_t index = row_offset + x_byte;
+            if (g_framebuffer[index] != g_last_framebuffer[index])
+            {
+                if (x_byte < min_x_byte) min_x_byte = x_byte;
+                if (x_byte > max_x_byte) max_x_byte = x_byte;
+                if (y < min_y) min_y = y;
+                if (y > max_y) max_y = y;
+            }
+        }
+    }
+
+    if (min_y >= OLED_HEIGHT)
+    {
+        return;   /* 无变化 */
+    }
+
+    uint16_t x = min_x_byte * 8;
+    uint16_t w = (max_x_byte - min_x_byte + 1) * 8;
+    uint16_t h = max_y - min_y + 1;
+
+    if (x + w > OLED_WIDTH)
+    {
+        w = OLED_WIDTH - x;
+    }
+
+    st7789_blit_mono(x, min_y, w, h,
+                     g_framebuffer, ST7789_FB_STRIDE, COLOR_WHITE, COLOR_BLACK);
+    memcpy(g_last_framebuffer, g_framebuffer, sizeof(g_framebuffer));
+}
+
+void st7789_send_area_buffer(int16_t x, int16_t y, int16_t w, int16_t h)
+{
+    int16_t x1 = x + w - 1;
+    int16_t y1 = y + h - 1;
+
+    if (w <= 0 || h <= 0) return;
+    if (x1 < 0 || y1 < 0 || x >= OLED_WIDTH || y >= OLED_HEIGHT) return;
+
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+    if (x1 >= OLED_WIDTH) x1 = OLED_WIDTH - 1;
+    if (y1 >= OLED_HEIGHT) y1 = OLED_HEIGHT - 1;
+
+    st7789_blit_mono((uint16_t)x, (uint16_t)y,
+                     (uint16_t)(x1 - x + 1), (uint16_t)(y1 - y + 1),
                      g_framebuffer, ST7789_FB_STRIDE, COLOR_WHITE, COLOR_BLACK);
 }
 
@@ -510,13 +659,15 @@ void st7789_send_buffer(void)
  * 几何绘制 — 缓冲模式下写入 1-bit framebuffer，直写模式下写入 GRAM
  *===========================================================================*/
 
+/**
+ * @brief 绘制一个像素
+ */
 void st7789_draw_pixel(int16_t x, int16_t y)
 {
     if (x < 0 || x >= OLED_WIDTH || y < 0 || y >= OLED_HEIGHT) return;
     if (g_buffer_mode)
     {
-        if (g_draw_color == 0) st7789_fb_pixel(x, y, 0);
-        else st7789_fb_pixel(x, y, 1);
+        st7789_fb_pixel(x, y, g_draw_color);
         return;
     }
 
@@ -524,6 +675,9 @@ void st7789_draw_pixel(int16_t x, int16_t y)
     st7789_write_data16(g_fg_color);
 }
 
+/**
+ * @brief 绘制水平线
+ */
 void st7789_draw_hline(int16_t x, int16_t y, int16_t len)
 {
     if (y < 0 || y >= OLED_HEIGHT) return;
@@ -534,10 +688,7 @@ void st7789_draw_hline(int16_t x, int16_t y, int16_t len)
     if (g_buffer_mode)
     {
         for (int16_t i = 0; i < len; i++)
-        {
-            if (g_draw_color == 0) st7789_fb_pixel(x + i, y, 0);
-            else st7789_fb_pixel(x + i, y, 1);
-        }
+            st7789_fb_pixel(x + i, y, g_draw_color);
         return;
     }
 
@@ -545,6 +696,9 @@ void st7789_draw_hline(int16_t x, int16_t y, int16_t len)
     st7789_fill_pixels(g_fg_color, len);
 }
 
+/**
+ * @brief 绘制垂直线
+ */
 void st7789_draw_vline(int16_t x, int16_t y, int16_t h)
 {
     if (x < 0 || x >= OLED_WIDTH) return;
@@ -555,10 +709,7 @@ void st7789_draw_vline(int16_t x, int16_t y, int16_t h)
     if (g_buffer_mode)
     {
         for (int16_t i = 0; i < h; i++)
-        {
-            if (g_draw_color == 0) st7789_fb_pixel(x, y + i, 0);
-            else st7789_fb_pixel(x, y + i, 1);
-        }
+            st7789_fb_pixel(x, y + i, g_draw_color);
         return;
     }
 
@@ -566,6 +717,9 @@ void st7789_draw_vline(int16_t x, int16_t y, int16_t h)
     st7789_fill_pixels(g_fg_color, h);
 }
 
+/**
+ * @brief 使用 Bresenham 算法绘制任意直线
+ */
 void st7789_draw_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2)
 {
     int16_t dx = abs(x2 - x1), dy = abs(y2 - y1);
@@ -583,6 +737,9 @@ void st7789_draw_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2)
     }
 }
 
+/**
+ * @brief 绘制填充矩形（实心）
+ */
 void st7789_draw_box(int16_t x, int16_t y, int16_t w, int16_t h)
 {
     if (w <= 0 || h <= 0) return;
@@ -595,9 +752,7 @@ void st7789_draw_box(int16_t x, int16_t y, int16_t w, int16_t h)
     if (g_buffer_mode)
     {
         for (int16_t yy = 0; yy < h; yy++)
-        {
             st7789_draw_hline(x, y + yy, w);
-        }
         return;
     }
 
@@ -605,6 +760,9 @@ void st7789_draw_box(int16_t x, int16_t y, int16_t w, int16_t h)
     st7789_fill_pixels(g_fg_color, (uint32_t)w * h);
 }
 
+/**
+ * @brief 绘制矩形边框（空心）
+ */
 void st7789_draw_frame(int16_t x, int16_t y, int16_t w, int16_t h)
 {
     st7789_draw_hline(x,         y,         w);
@@ -613,6 +771,9 @@ void st7789_draw_frame(int16_t x, int16_t y, int16_t w, int16_t h)
     st7789_draw_vline(x + w - 1, y + 1,     h - 2);
 }
 
+/**
+ * @brief 绘制水平虚线（每3像素中前2像素实心，后1像素空白）
+ */
 void st7789_draw_hline_dotted(int16_t x, int16_t y, int16_t len)
 {
     for (int16_t i = 0; i < len; i += 3)
@@ -622,6 +783,9 @@ void st7789_draw_hline_dotted(int16_t x, int16_t y, int16_t len)
     }
 }
 
+/**
+ * @brief 绘制垂直虚线
+ */
 void st7789_draw_vline_dotted(int16_t x, int16_t y, int16_t len)
 {
     for (int16_t i = 0; i < len; i += 3)
@@ -635,6 +799,9 @@ void st7789_draw_vline_dotted(int16_t x, int16_t y, int16_t len)
  * 圆角矩形
  *===========================================================================*/
 
+/**
+ * @brief 绘制填充圆角矩形（使用预计算平方根）
+ */
 void st7789_draw_rbox(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r)
 {
     if (w <= 0 || h <= 0) return;
@@ -648,20 +815,25 @@ void st7789_draw_rbox(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r)
     if (y + h > OLED_HEIGHT) h = OLED_HEIGHT - y;
     if (w <= 0 || h <= 0) return;
 
+    int16_t r2 = r * r;
+    /* 绘制中间矩形部分（四个圆角之间的区域） */
     st7789_draw_box(x + r, y,     w - 2 * r, h);
     st7789_draw_box(x,     y + r, w,         h - 2 * r);
 
-    int16_t r2 = r * r;
+    /* 绘制四个圆角（逐行扫描，使用圆方程） */
     for (int16_t dy = 0; dy < r; dy++)
     {
-        int16_t dx = (int16_t)(sqrtf((float)(r2 - dy * dy)) + 0.5f);
-        /* 上左 + 上右 */
-        st7789_draw_hline(x + r - dx, y + r - 1 - dy, dx * 2 + w - 2 * r);
-        /* 下左 + 下右 */
-        st7789_draw_hline(x + r - dx, y + h - r + dy, dx * 2 + w - 2 * r);
+        int16_t cy = r - 1 - dy;
+        int16_t dx = (int16_t)(sqrtf((float)(r2 - cy * cy)) + 0.5f);
+
+        st7789_draw_hline(x + r - dx, y + dy,          w - 2 * r + 2 * dx);
+        st7789_draw_hline(x + r - dx, y + h - 1 - dy,  w - 2 * r + 2 * dx);
     }
 }
 
+/**
+ * @brief 绘制圆角矩形边框（空心）
+ */
 void st7789_draw_rframe(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r)
 {
     if (w <= 0 || h <= 0) return;
@@ -669,19 +841,36 @@ void st7789_draw_rframe(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r)
     if (r > w / 2) r = w / 2;
     if (r > h / 2) r = h / 2;
 
+    int16_t cx_l = x + r;
+    int16_t cx_r = x + w - r - 1;
+    int16_t cy_t = y + r;
+    int16_t cy_b = y + h - r - 1;
+
+    /* 四条直边 */
     st7789_draw_hline(x + r, y,         w - 2 * r);
     st7789_draw_hline(x + r, y + h - 1, w - 2 * r);
     st7789_draw_vline(x,     y + r,     h - 2 * r);
     st7789_draw_vline(x + w - 1, y + r, h - 2 * r);
 
+    /* 四个圆角（使用近似画圆方法，通过半径容差绘制像素） */
     int16_t r2 = r * r;
-    for (int16_t dy = 0; dy < r; dy++)
+    int16_t band = r + 1;
+
+    for (int16_t py = 0; py <= r; py++)
     {
-        int16_t dx = (int16_t)(sqrtf((float)(r2 - dy * dy)) + 0.5f);
-        st7789_draw_pixel(x + r - dx,         y + r - 1 - dy);
-        st7789_draw_pixel(x + w - r + dx - 1, y + r - 1 - dy);
-        st7789_draw_pixel(x + r - dx,         y + h - r + dy);
-        st7789_draw_pixel(x + w - r + dx - 1, y + h - r + dy);
+        for (int16_t px = 0; px <= r; px++)
+        {
+            int16_t dx = px - r;
+            int16_t dy = py - r;
+            int16_t delta = dx * dx + dy * dy - r2;
+            if (delta < 0) delta = -delta;
+            if (delta > band) continue;
+
+            st7789_draw_pixel(cx_l + dx, cy_t + dy);
+            st7789_draw_pixel(cx_r - dx, cy_t + dy);
+            st7789_draw_pixel(cx_l + dx, cy_b - dy);
+            st7789_draw_pixel(cx_r - dx, cy_b - dy);
+        }
     }
 }
 
@@ -689,6 +878,9 @@ void st7789_draw_rframe(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r)
  * 圆形 — Bresenham 中点画圆
  *===========================================================================*/
 
+/**
+ * @brief 绘制圆形边框（Bresenham 算法）
+ */
 void st7789_draw_circle(int16_t cx, int16_t cy, int16_t r)
 {
     if (r <= 0) return;
@@ -696,6 +888,7 @@ void st7789_draw_circle(int16_t cx, int16_t cy, int16_t r)
     int16_t x = 0, y = r, d = 1 - r;
     while (x <= y)
     {
+        /* 对称绘制8个点 */
         st7789_draw_pixel(cx + x, cy + y);
         st7789_draw_pixel(cx + y, cy + x);
         st7789_draw_pixel(cx - x, cy + y);
@@ -715,6 +908,12 @@ void st7789_draw_circle(int16_t cx, int16_t cy, int16_t r)
  * 位图绘制 (单色位图 → RGB565 像素)
  *===========================================================================*/
 
+/**
+ * @brief 绘制单色位图（1-bit，0=透明/背景，1=前景色）
+ * @param x,y    左上角坐标
+ * @param w,h    位图尺寸
+ * @param bitmap 位图数据，每行按字节对齐（高位在前）
+ */
 void st7789_draw_bitmap(int16_t x, int16_t y, int16_t w, int16_t h, const uint8_t *bitmap)
 {
     if (bitmap == NULL) return;
@@ -735,6 +934,10 @@ void st7789_draw_bitmap(int16_t x, int16_t y, int16_t w, int16_t h, const uint8_
  * 字体系统 — 字符渲染引擎
  *===========================================================================*/
 
+/**
+ * @brief 设置当前字体（ASCII或中文）
+ * @param font 字体结构体指针
+ */
 void st7789_set_font(const void *font)
 {
     g_current_font = font;
@@ -742,6 +945,10 @@ void st7789_set_font(const void *font)
     g_is_cn_font = (font == (const void*)&cn_font_16);
 }
 
+/**
+ * @brief 获取当前字体高度（像素）
+ * @return 字体高度
+ */
 int16_t st7789_get_font_height(void)
 {
     if (g_current_font == NULL) return 16;
@@ -753,7 +960,9 @@ int16_t st7789_get_font_height(void)
 
 /**
  * @brief 绘制单个 ASCII 字符 (8×16 字库)
- * @return 字符宽度 (像素)
+ * @param x,y 左上角坐标
+ * @param ch  字符（ASCII）
+ * @return 字符宽度（像素）
  */
 static int16_t draw_ascii_char(int16_t x, int16_t y, char ch)
 {
@@ -779,7 +988,9 @@ static int16_t draw_ascii_char(int16_t x, int16_t y, char ch)
 
 /**
  * @brief 绘制单个中文字符 (16×16 字库)
- * @return 宽度 (固定 16)
+ * @param x,y     左上角坐标
+ * @param unicode Unicode 编码
+ * @return 宽度（固定16像素）
  */
 static int16_t draw_cn_char(int16_t x, int16_t y, uint16_t unicode)
 {
@@ -807,6 +1018,9 @@ static int16_t draw_cn_char(int16_t x, int16_t y, uint16_t unicode)
  * 字符串绘制
  *===========================================================================*/
 
+/**
+ * @brief 计算 ASCII 字符串宽度（像素）
+ */
 int16_t st7789_get_str_width(const char *str)
 {
     if (g_current_font == NULL || str == NULL) return 0;
@@ -816,6 +1030,9 @@ int16_t st7789_get_str_width(const char *str)
     return (int16_t)(strlen(str) * f->char_w);
 }
 
+/**
+ * @brief 计算 UTF-8 字符串宽度（中英文混合）
+ */
 int16_t st7789_get_utf8_width(const char *str)
 {
     if (str == NULL) return 0;
@@ -824,27 +1041,34 @@ int16_t st7789_get_utf8_width(const char *str)
     while (*p)
     {
         uint8_t c = (uint8_t)*p;
-        if (c < 0x80)      { total += 8;  p++;      }
-        else if ((c & 0xE0) == 0xC0) { total += 16; p += 2; }
-        else if ((c & 0xF0) == 0xE0) { total += 16; p += 3; }
-        else                         { total += 16; p++;     }
+        if (c < 0x80)      { total += 8;  p++;      }   /* ASCII 字符 8px */
+        else if ((c & 0xE0) == 0xC0) { total += 16; p += 2; } /* 2字节UTF-8，按中文宽 */
+        else if ((c & 0xF0) == 0xE0) { total += 16; p += 3; } /* 3字节UTF-8（中文） */
+        else                         { total += 16; p++;     } /* 无效字节，占16px */
     }
     return total;
 }
 
+/**
+ * @brief 绘制 ASCII 字符串（仅支持 ASCII，不处理中文）
+ */
 void st7789_draw_str(int16_t x, int16_t y, const char *str)
 {
     if (g_current_font == NULL || str == NULL) return;
+    y -= st7789_get_font_height() - 1;   /* 调整y为基线位置 */
     while (*str) { x += draw_ascii_char(x, y, *str); str++; }
 }
 
 /**
  * @brief 绘制 UTF-8 字符串 (中英文混排, 自动识别)
+ * @note 中文需要加载中文字库（cn_font_16），ASCII 使用 8x16 字体
  */
 void st7789_draw_utf8(int16_t x, int16_t y, const char *str)
 {
     if (str == NULL) return;
     extern const st7789_font_t font_8x16;
+
+    y -= st7789_get_font_height() - 1;
 
     const char *p = str;
     while (*p)
@@ -878,14 +1102,14 @@ void st7789_draw_utf8(int16_t x, int16_t y, const char *str)
 }
 
 /*===========================================================================
- * 引入字库数据
+ * 引入字库数据（外部链接）
  *===========================================================================*/
 
 extern const st7789_font_t font_8x16;
 #include "font_8x16.h"
 #include "font_cn_16.h"
 
-/* ASCII 字库结构体定义 */
+/* ASCII 字库结构体定义（数据在 font_8x16.h 中） */
 extern const uint16_t font_8x16_offset[];
 
 const st7789_font_t font_8x16 = {

@@ -8,6 +8,7 @@
 #define ASTRA_UI_ITEM_H
 
 #include "astra_ui_draw_driver.h"
+#include "app_ui_style_config.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -51,20 +52,24 @@ extern astra_pop_up_t astra_pop_up;
 extern void astra_push_pop_up(char *_content, const uint16_t _span);
 
 /*** 列表项 — 跟随当前 ST7789 逻辑分辨率 ***/
-#define MAX_LIST_CHILD_NUM 10
+#define MAX_LIST_CHILD_NUM UI_LIST_MAX_CHILD_NUM
 #define MAX_LIST_LAYER 10
 #define SCREEN_HEIGHT OLED_HEIGHT
 #define SCREEN_WIDTH  OLED_WIDTH
 #if OLED_WIDTH >= 300
-#define LIST_ITEM_SPACING 35
+#define LIST_ITEM_SPACING UI_LIST_ITEM_SPACING_147
 #else
-#define LIST_ITEM_SPACING 24
+#define LIST_ITEM_SPACING UI_LIST_ITEM_SPACING_114
 #endif
 #define LIST_ITEM_OFFSET 12      /**< 列表项偏移 (原 8)                */
-#define LIST_ITEM_LEFT_MARGIN 8  /**< 列表项左缩进 (原 4)              */
-#define LIST_ITEM_RIGHT_MARGIN 50 /**< 列表项右缩进 (原 20, ×2.5)     */
-#define LIST_INFO_BAR_HEIGHT 6   /**< 顶部状态栏高度 (原 3)            */
-#define LIST_FONT_TOP_MARGIN 8   /**< 字体顶部边距 (原 4)              */
+#define LIST_ITEM_LEFT_MARGIN UI_LIST_ITEM_LEFT_MARGIN
+#define LIST_ITEM_RIGHT_MARGIN UI_LIST_ITEM_RIGHT_MARGIN
+#if UI_TITLE_ENABLE
+#define LIST_INFO_BAR_HEIGHT UI_TITLE_AREA_HEIGHT
+#else
+#define LIST_INFO_BAR_HEIGHT 0
+#endif
+#define LIST_FONT_TOP_MARGIN UI_LIST_TOP_MARGIN
 
 typedef enum
 {

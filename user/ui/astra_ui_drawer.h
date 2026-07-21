@@ -38,4 +38,7 @@ extern void astra_draw_widget();
 /** @brief 列表总控 — 背景层 */
 extern void astra_draw_list();
 
+/** @brief 彩色点缀叠层 — oled_send_buffer() 后直写 */
+extern void astra_draw_color_overlay();
+
 #endif /* ASTRA_UI_DRAWER_H */

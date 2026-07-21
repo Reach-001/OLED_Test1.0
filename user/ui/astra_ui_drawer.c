@@ -441,7 +441,9 @@ void astra_draw_list_item()
         char _val_str[10] = {};
         sprintf(_val_str, "%d", *_sl->value);
 
-        int16_t _vx = OLED_WIDTH - LIST_ITEM_RIGHT_MARGIN - oled_get_str_width(_val_str) + 2;
+        /* 切到 ASCII 字体测量宽度 (cn_font 下 get_str_width 返回 16*len 而非 8*len) */
+        int16_t _vw = (int16_t)(strlen(_val_str) * 8);
+        int16_t _vx = OLED_WIDTH - LIST_ITEM_RIGHT_MARGIN - _vw + 2;
 
         if (_sl->is_confirmed)
         {
@@ -456,8 +458,8 @@ void astra_draw_list_item()
             oled_draw_R_box(_vx, _y_item - 4, oled_get_UTF8_width(_val_str) + 4, oled_get_str_height() - 2, 1);
           }
 
-          oled_set_draw_color(UI_COLOR_BLACK);        /* 确认态始终黑字: 非选中=黑底, 选中=白底 */
-          oled_draw_str(_vx + 2, _y_item + oled_get_str_height() / 2, _val_str);
+          oled_set_draw_color(UI_COLOR_BLACK);        /* 确认态始终黑字 */
+          oled_draw_str(_vx + 2, _baseline, _val_str);
 
           if (_tick - _last_tick >= 1000)
           {
@@ -468,7 +470,7 @@ void astra_draw_list_item()
         else
         {
           oled_set_draw_color(_c);
-          oled_draw_str(_vx + 2, _y_item + oled_get_str_height() / 2, _val_str);
+          oled_draw_str(_vx + 2, _baseline, _val_str);
         }
       }
     }

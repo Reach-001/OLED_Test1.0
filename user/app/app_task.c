@@ -195,9 +195,10 @@ void task_control(void)
  *-----------------------------------------------------------*/
 void task_display(void)
 {
-    /* BUG FIX: 原代码重新调用 track_get_error，丢线时返回 0，与控制逻辑
-     *          使用的 s_last_error（保持上次有效值）不一致，调试时误导。
-     *          改为直接打印 s_last_error，与控制逻辑保持一致。 */
+    /* UART0 被关时跳过 printf，否则 DL_UART_isBusy 永远忙等待导致卡死 */
+    if (app_uart_get_state(0) == NULL || !app_uart_get_state(0)->enabled)
+        return;
+
     printf("S:%d E:%d L:%d R:%d\r\n",
            s_sys_state,
            s_last_error,
@@ -272,7 +273,7 @@ void task_start(void)
         s_last_error = 0;
         s_sys_state = SYS_STATE_RUNNING;
         led_on();
-        printf("System Started!\r\n");
+        if (app_uart_get_state(0)->enabled) printf("System Started!\r\n");
     }
 }
 
@@ -285,5 +286,5 @@ void task_stop(void)
     motor_stop_all();
     s_sys_state = SYS_STATE_STOP;
     led_off();
-    printf("System Stopped!\r\n");
+    if (app_uart_get_state(0)->enabled) printf("System Stopped!\r\n");
 }

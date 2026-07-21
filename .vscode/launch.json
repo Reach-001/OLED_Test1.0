@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "cwd": "${workspaceRoot}",
+            "type": "cortex-debug",
+            "request": "launch",
+            "name": "MSPM0G3507 OpenOCD",
+            "servertype": "openocd",
+            "executable": "./build/Debug/ti_mspm0g3507_gcc.elf",
+            "runToMain": true,
+            "configFiles": [
+                "linker/CFG.cfg"
+            ],
+            "svdFile": "./linker/MSPM0G350X.svd"
+        }
+    ]
+}

@@ -1,0 +1,4 @@
+build/
+.eide/.log/
+*.log
+.DS_Store

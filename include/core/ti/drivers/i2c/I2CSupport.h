@@ -1,0 +1,114 @@
+/*
+ * Copyright (c) 2020-2023, Texas Instruments Incorporated
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * *  Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * *  Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * *  Neither the name of Texas Instruments Incorporated nor the names of
+ *    its contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+/*!****************************************************************************
+ *  @file       I2CSupport.h
+ *
+ *  @brief      Holder of common helper functions for the I2C driver.
+ *              I2C 驱动公共辅助函数头文件。声明了 I2C 底层操作接口，
+ *              由具体平台实现（如 I2CMSPM0.c）。
+ *
+ *  @defgroup   I2CSupport Common helper functions for I2C driver
+ *
+ *  # Overview
+ *  Refer to @ref ti_drivers_I2C_Overview for a complete description of APIs and examples
+ *  of use.
+ *
+ ******************************************************************************
+ */
+/** @addtogroup I2CSupport
+ *  @ingroup I2C
+* @{
+*/
+#ifndef ti_drivers_I2CSupport__include
+#define ti_drivers_I2CSupport__include
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#include <ti/driverlib/dl_i2c.h>
+#include <ti/drivers/I2C.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/*!
+ *  @brief  Function to send a finish command to the controller module.
+ *          向 I2C 控制器发送完成命令（产生 STOP 条件）。
+ *
+ *  @param[in]  hwAttrs    A pointer to an I2C_HWAttrs structure.
+ *  @param[in]  hwAttrs    指向 I2C_HWAttrs 结构体的指针。
+ */
+extern void I2CSupport_controllerFinish(I2C_HWAttrs const *hwAttrs);
+
+/*!
+ *  @brief  Function to set power constraint.
+ *          设置电源约束，阻止设备进入待机模式。
+ */
+extern void I2CSupport_powerSetConstraint(void);
+
+/*!
+ *  @brief  Function to release power constraint.
+ *          释放电源约束，允许设备进入待机模式。
+ */
+extern void I2CSupport_powerRelConstraint(void);
+
+/*!
+ *  @brief  Function to initialize transfers
+ *          初始化并启动 I2C 传输。
+ *
+ *  @param[in]  handle          An I2C_Handle returned from I2C_open().
+ *  @param[in]  handle          I2C_open() 返回的 I2C 句柄。
+ *  @param[in]  transaction     A pointer to an I2C_Transaction.
+ *  @param[in]  transaction     指向 I2C_Transaction 的指针。
+ *
+ *  @return Returns a status indicating success or failure of the transfer.
+ *  @return 传输启动状态。
+ *
+ *  @retval I2C_STATUS_SUCCESS    The transfer was successful.
+ *  @retval I2C_STATUS_SUCCESS    传输成功启动。
+ *  @retval I2C_STATUS_INCOMPLETE I2C transaction is in progress or returned
+ *                                without completing.
+ *  @retval I2C_STATUS_INCOMPLETE 传输正在进行中或未完成。
+ *  @retval I2C_STATUS_BUS_BUSY   I2C bus already in use by another I2C Controller.
+ *  @retval I2C_STATUS_BUS_BUSY   I2C 总线已被其他主机占用。
+ */
+extern int_fast16_t I2CSupport_primeTransfer(
+    I2C_Handle handle, I2C_Transaction *transaction);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* ti_drivers_I2CSupport__include */
+/** @}*/

@@ -1,0 +1,111 @@
+version: "4.1"
+name: OLED_Test1.0
+type: ARM
+deviceName: MSPM0G3507
+packDir: null
+srcDirs:
+  - source/core
+  - source/core/ti/driverlib
+  - source/core/ti/driverlib/m0p
+  - source/core/ti/driverlib/m0p/sysctl
+  - source/core/zf_common
+  - source/core/zf_driver
+  - source/core/zf_device
+  - user/main
+  - user/bsp
+  - user/app
+  - user/ui
+virtualFolder:
+  name: <virtual_root>
+  files:
+    - name: ti_msp_dl_config.c
+      path: ti_msp_dl_config.c
+  folders: []
+dependenceList: []
+outDir: build
+miscInfo:
+  uid: 947cce4ba5bd0e9f9920cc6807ca46f8
+targets:
+  Debug:
+    cppPreprocessAttrs:
+      defineList:
+        - __MSPM0G3507__
+      incList:
+        - .
+        - include/core
+        - include/core/ti/driverlib
+        - include/core/ti/driverlib/m0p
+        - include/core/ti/driverlib/m0p/sysctl
+        - include/core/third_party/CMSIS/Core/Include
+        - include/core/ti/devices/msp
+        - include/core/ti/devices/msp/m0p
+        - include/core/ti/devices/msp/peripherals
+        - include/core/ti/devices/msp/peripherals/m0p
+        - include/core/zf
+        - user/main
+        - user/config
+        - user/bsp
+        - user/app
+        - user/ui
+      libList: []
+    excludeList: []
+    settings:
+      debugger: cortex-debug
+    toolchain: GCC
+    toolchainConfigMap:
+      GCC:
+        archExtensions: ""
+        cpuType: Cortex-M0+
+        floatingPointHardware: default
+        options:
+          version: 5
+          afterBuildTasks: []
+          asm-compiler: {}
+          beforeBuildTasks: []
+          c/cpp-compiler:
+            language-c: c11
+            language-cpp: c++17
+            one-elf-section-per-data: true
+            one-elf-section-per-function: true
+            optimization: level-debug
+            warnings: all-warnings
+          global:
+            $float-abi-type: soft
+            arm-thumb-mode: thumb
+            callgraph-info: true
+            misc-control: --specs=nosys.specs -mfloat-abi=soft
+            output-debug-info: enable
+            stack-usage: true
+          linker:
+            $toolName: auto
+            LD_FLAGS: -Wl,--defsym=__heap_size__=0x800 -Wl,--defsym=__stack_size__=0x800 -Wl,--no-warn-rwx-segments
+            LIB_FLAGS: -lc -lm
+            output-format: elf
+            print-mem-usage: true
+            remove-unused-input-sections: true
+        scatterFilePath: ./linker/mspm0g3507.ld
+        storageLayout:
+          RAM:
+            - id: 1
+              isChecked: "1"
+              mem:
+                size: "0x8000"
+                startAddr: "0x20200000"
+              noInit: false
+              tag: IRAM
+          ROM:
+            - id: 1
+              isChecked: "1"
+              isStartup: true
+              mem:
+                size: "0x20000"
+                startAddr: "0x00000000"
+              tag: IROM
+        useCustomScatterFile: true
+    uploadConfigMap:
+      OpenOCD:
+        baseAddr: "0x00000000"
+        bin: ${ExecutableName}.hex
+        interface: cmsis-dap
+        target: ti/mspm0
+    uploader: OpenOCD

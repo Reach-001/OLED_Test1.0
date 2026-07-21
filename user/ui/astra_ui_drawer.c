@@ -440,7 +440,7 @@ void astra_draw_list_item()
       {
         astra_draw_list_icon(astra_selector.selected_item->parent->child_list_item[i]->icon, _x_item, _y_item);
 
-        /* 比例条: icon 右侧 → 数值左侧 */
+        /* 刻度线: icon右侧 → 数值左侧, 线上一个圆点指示位置 */
         char _val_str[8] = {};
         sprintf(_val_str, "%d", *_sl->value);
         int16_t _vw  = (int16_t)(strlen(_val_str) * 8);
@@ -448,36 +448,32 @@ void astra_draw_list_item()
         int16_t bar_x = 24;
         int16_t bar_w = _vx - bar_x - 8;
 
-        int16_t fill;
+        /* 位置点 x 坐标 */
+        int16_t dot;
         if (_sl->value_max > _sl->value_min)
-          fill = (int16_t)((int32_t)(*_sl->value - _sl->value_min) * bar_w
-                         / (_sl->value_max - _sl->value_min));
-        else fill = bar_w / 2;
-        if (fill < 0) fill = 0; if (fill > bar_w) fill = bar_w;
+          dot = bar_x + (int16_t)((int32_t)(*_sl->value - _sl->value_min) * (bar_w - 4)
+                                / (_sl->value_max - _sl->value_min));
+        else dot = bar_x + bar_w / 2;
+        if (dot < bar_x + 2) dot = bar_x + 2;
+        if (dot > bar_x + bar_w - 2) dot = bar_x + bar_w - 2;
 
-        int16_t bar_h = 8;
-        int16_t bar_y = _baseline - oled_get_str_height()/2 + (oled_get_str_height() - bar_h)/2;
+        int16_t line_y = _baseline + 3;  /* 文字基线下方3px, 不挤占间距 */
 
-        /* 空轨道 */
+        /* 细刻度线 */
         oled_set_draw_color(UI_COLOR_GRAY);
-        oled_draw_box(bar_x, bar_y, bar_w, bar_h);
-        /* 填充 */
-        oled_set_draw_color(_is_sel ? UI_COLOR_BLACK : UI_LIST_TEXT_COLOR);
-        oled_draw_box(bar_x, bar_y, fill, bar_h);
-        /* 边框 */
+        oled_draw_H_line(bar_x, line_y, bar_w);
+
+        /* 小方块刻度点 (3x3, 居中于刻度线上) */
         oled_set_draw_color(_c);
-        oled_draw_frame(bar_x - 1, bar_y - 1, bar_w + 2, bar_h + 2);
+        oled_draw_box(dot, line_y - 1, 4, 3);
 
         /* 数值 */
         st7789_set_font((const void*)&font_8x16);
         oled_set_draw_color(_c);
-        if (_sl->is_confirmed) {
-          /* 确认态闪烁: 500ms 周期显隐 */
-          if ((get_ticks() / 500) & 1)
-            oled_draw_str(_vx + 2, _baseline, _val_str);
-        } else {
+        if (_sl->is_confirmed && ((get_ticks() / 500) & 1))
+          ;  /* 确认态闪烁: 半周期不画 */
+        else
           oled_draw_str(_vx + 2, _baseline, _val_str);
-        }
         st7789_set_font(astra_default_font);
       }
     }

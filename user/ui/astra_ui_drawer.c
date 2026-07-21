@@ -340,23 +340,32 @@ void astra_draw_list_appearance()
   oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
 #endif
 
-  /* ---- 右侧滚动条 (帧缓冲绘制, 无闪烁) ---- */
+  /* ---- 右侧滚动条 (帧缓冲绘制, 带动画) ---- */
   uint8_t child_num = astra_selector.selected_item->parent->child_num;
   if (child_num <= 1) return;
 
+  static float _thumb_y     = LIST_INFO_BAR_HEIGHT + 4;
+  static float _thumb_y_trg = LIST_INFO_BAR_HEIGHT + 4;
   float part_len = ceilf((SCREEN_HEIGHT - LIST_INFO_BAR_HEIGHT - 8.0f) / (float)child_num);
-  int16_t thumb_y = LIST_INFO_BAR_HEIGHT + 4 + astra_selector.selected_index * part_len;
 
-  /* 轨道线 */
+  /* 轨道顶部留 4px 空隙，避免与标题栏绿线重叠 */
+  int16_t bar_top = LIST_INFO_BAR_HEIGHT + 4;
+
+  /* 滑块目标位置 + 动画 */
+  _thumb_y_trg = LIST_INFO_BAR_HEIGHT + 4 + astra_selector.selected_index * part_len;
+  extern void astra_animation(float *_pos, float _posTrg, float _speed);
+  astra_animation(&_thumb_y, _thumb_y_trg, 92);
+
+  /* 轨道线从空隙下方开始 */
   oled_set_draw_color(UI_COLOR_WHITE);
-  oled_draw_V_line(OLED_WIDTH - 5, LIST_INFO_BAR_HEIGHT, OLED_HEIGHT - LIST_INFO_BAR_HEIGHT);
-  oled_draw_V_line(OLED_WIDTH - 1, LIST_INFO_BAR_HEIGHT, OLED_HEIGHT - LIST_INFO_BAR_HEIGHT);
+  oled_draw_V_line(OLED_WIDTH - 5, bar_top, OLED_HEIGHT - bar_top);
+  oled_draw_V_line(OLED_WIDTH - 1, bar_top, OLED_HEIGHT - bar_top);
 
-  /* 滑块 */
-  oled_draw_box(OLED_WIDTH - 4, thumb_y, 3, (int16_t)part_len);
+  /* 滑块: 使用动画后的位置 */
+  oled_draw_box(OLED_WIDTH - 4, (int16_t)_thumb_y, 3, (int16_t)part_len);
 
-  /* 首尾帽 */
-  oled_draw_box(OLED_WIDTH - 4, LIST_INFO_BAR_HEIGHT, 3, 4);
+  /* 首尾帽 (顶部帽从空隙开始) */
+  oled_draw_box(OLED_WIDTH - 4, bar_top, 3, 4);
   oled_draw_box(OLED_WIDTH - 4, OLED_HEIGHT - 4, 3, 4);
 }
 

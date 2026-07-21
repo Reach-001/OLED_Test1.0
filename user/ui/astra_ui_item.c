@@ -299,11 +299,12 @@ void astra_selector_jump_to_selected_item()
   {
     astra_switch_item_t* _selected_switch_item = astra_to_switch_item(astra_selector.selected_item);
     *_selected_switch_item->value = !*_selected_switch_item->value;
-    if (_selected_switch_item->init_function)
-      _selected_switch_item->init_function();
+    /* exit_function 先执行（应用新值到硬件），
+     * init_function 后执行（从硬件同步回 UI 显示）。 */
     if (_selected_switch_item->exit_function)
       _selected_switch_item->exit_function();
-    /* 只切换，不自动进入子页面。长按由外部调用 astra_enter_child_item。 */
+    if (_selected_switch_item->init_function)
+      _selected_switch_item->init_function();
     return;
   }
 

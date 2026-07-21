@@ -170,141 +170,29 @@ static int16_t s_ui_speed_kp = (int16_t)PID_SPEED_KP;
 static int16_t s_ui_speed_ki = (int16_t)PID_SPEED_KI;
 
 /*===========================================================================
- * UART 四通道独立控制
+ * UART 四通道开关
  *===========================================================================*/
 
-/** 常用波特率列表 */
-static const uint32 s_uart_baud_list[] = {
-    9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600
-};
-#define UART_BAUD_COUNT (sizeof(s_uart_baud_list) / sizeof(s_uart_baud_list[0]))
+#define UI_UART_DEFAULT_BAUD   115200
 
-/** 单个 UART 通道的状态 */
-typedef struct {
-    bool     enabled;       /**< 通道使能 */
-    uint8    baud_idx;      /**< 波特率在 s_uart_baud_list 中的索引 */
-    uint32   tx_count;      /**< TX 字节计数 */
-    uint32   rx_count;      /**< RX 字节计数 */
-    uint32   tx_pin;        /**< TX 引脚枚举值 */
-    uint32   rx_pin;        /**< RX 引脚枚举值 */
-    bool     inited;        /**< 是否已调用 uart_init */
-} ui_uart_chan_t;
+static bool s_uart_en[4]     = { false, false, false, false };
+static bool s_uart_inited[4] = { false, false, false, false };
 
-/* 默认引脚配置: UART0=A0/A1, UART1=B4/B5, UART2=A21/A22, UART3=B12/B13 */
-static ui_uart_chan_t s_uart_chan[4] = {
-    { false, 4, 0, 0, UART0_TX_A0,  UART0_RX_A1,  false },
-    { false, 4, 0, 0, UART1_TX_B4,  UART1_RX_B5,  false },
-    { false, 4, 0, 0, UART2_TX_A21, UART2_RX_A22, false },
-    { false, 4, 0, 0, UART3_TX_B12, UART3_RX_B13, false },
-};
-
-/** 当前正在显示的 UART 通道索引 (0-3)，供各控件的回调使用 */
-static uint8 s_uart_cur_chan = 0;
-
-/* ---- 引脚名映射 ---- */
-static const char *ui_uart_pin_name(uint32 pin)
+static void ui_uart_init_ch(uint8 ch)
 {
-    uint16 idx = pin & UART_PIN_INDEX_MASK;
-    switch (idx) {
-        case A0:  return "A0";  case A1:  return "A1";
-        case B4:  return "B4";  case B5:  return "B5";
-        case A21: return "A21"; case A22: return "A22";
-        case B12: return "B12"; case B13: return "B13";
-        default:  return "??";
-    }
+    uint32 tx = (ch == 0) ? UART0_TX_A0  : (ch == 1) ? UART1_TX_B4
+              : (ch == 2) ? UART2_TX_A21 : UART3_TX_B12;
+    uint32 rx = (ch == 0) ? UART0_RX_A1  : (ch == 1) ? UART1_RX_B5
+              : (ch == 2) ? UART2_RX_A22 : UART3_RX_B13;
+    uart_init((uart_index_enum)ch, UI_UART_DEFAULT_BAUD,
+              (uart_tx_pin_enum)tx, (uart_rx_pin_enum)rx);
+    s_uart_inited[ch] = true;
 }
 
-/* ---- 各通道的 init / sync 回调 ---- */
-static void ui_uart0_sync(void) { s_uart_cur_chan = 0; }
-static void ui_uart1_sync(void) { s_uart_cur_chan = 1; }
-static void ui_uart2_sync(void) { s_uart_cur_chan = 2; }
-static void ui_uart3_sync(void) { s_uart_cur_chan = 3; }
-static void (*s_uart_sync_list[4])(void) = {
-    ui_uart0_sync, ui_uart1_sync, ui_uart2_sync, ui_uart3_sync
-};
-
-/* ---- 通用 Enable 开关回调 ---- */
-static void ui_uart_apply_enable(void)
-{
-    ui_uart_chan_t *ch = &s_uart_chan[s_uart_cur_chan];
-    if (ch->enabled && !ch->inited) {
-        uart_init((uart_index_enum)s_uart_cur_chan,
-                  s_uart_baud_list[ch->baud_idx],
-                  (uart_tx_pin_enum)ch->tx_pin,
-                  (uart_rx_pin_enum)ch->rx_pin);
-        ch->inited = true;
-    }
-    astra_push_info_bar(ch->enabled ? "UART ON" : "UART OFF", 600);
-}
-
-/* ---- UART 实时信息页 loop ---- */
-static void ui_uart_info_init(void) {}
-static void ui_uart_info_exit(void) {}
-
-static void ui_uart_info_loop(void)
-{
-    ui_uart_chan_t *ch = &s_uart_chan[s_uart_cur_chan];
-
-    st7789_set_font(astra_default_font);
-    oled_set_draw_color(UI_COLOR_WHITE);
-
-    char _b[40] = {};
-    snprintf(_b, sizeof(_b), "UART%d  %s",
-             s_uart_cur_chan,
-             ch->enabled ? "ON" : "OFF");
-    oled_draw_UTF8(8, 22, _b);
-
-    oled_set_draw_color(UI_COLOR_GRAY);
-    snprintf(_b, sizeof(_b), "BAUD: %u", s_uart_baud_list[ch->baud_idx]);
-    oled_draw_UTF8(8, 42, _b);
-
-    snprintf(_b, sizeof(_b), "TX:%s  RX:%s",
-             ui_uart_pin_name(ch->tx_pin),
-             ui_uart_pin_name(ch->rx_pin));
-    oled_draw_UTF8(8, 60, _b);
-
-    /* 分隔线 */
-    oled_set_draw_color(UI_COLOR_WHITE);
-    oled_draw_H_line(8, 72, OLED_WIDTH - 16);
-
-    /* TX 统计 */
-    oled_set_draw_color(UI_COLOR_WHITE);
-    oled_draw_UTF8(8,  88, "TX Bytes:");
-    snprintf(_b, sizeof(_b), "%u", ch->tx_count);
-    oled_set_draw_color(UI_COLOR_MINT);
-    oled_draw_UTF8(80, 88, _b);
-
-    /* RX 统计 */
-    oled_set_draw_color(UI_COLOR_WHITE);
-    oled_draw_UTF8(8,  106, "RX Bytes:");
-    snprintf(_b, sizeof(_b), "%u", ch->rx_count);
-    oled_set_draw_color(UI_COLOR_MINT);
-    oled_draw_UTF8(80, 106, _b);
-}
-
-/* ---- 波特率切换按钮 ---- */
-static void ui_uart_baud_next(void)
-{
-    ui_uart_chan_t *ch = &s_uart_chan[s_uart_cur_chan];
-    ch->baud_idx = (ch->baud_idx + 1) % UART_BAUD_COUNT;
-    ch->inited = false;  /* 波特率变了下次使能时需要重新 init */
-    char _m[32] = {};
-    snprintf(_m, sizeof(_m), "BAUD %u", s_uart_baud_list[ch->baud_idx]);
-    astra_push_info_bar(_m, 800);
-}
-
-/* ---- TX 测试发送按钮 ---- */
-static void ui_uart_test_tx(void)
-{
-    ui_uart_chan_t *ch = &s_uart_chan[s_uart_cur_chan];
-    if (!ch->enabled || !ch->inited) {
-        astra_push_info_bar("UART OFF", 600);
-        return;
-    }
-    uart_write_string((uart_index_enum)s_uart_cur_chan, "Hello UART\r\n");
-    ch->tx_count += 12;
-    astra_push_info_bar("TX OK", 600);
-}
+static void ui_uart0_on(void) { if (s_uart_en[0] && !s_uart_inited[0]) ui_uart_init_ch(0); }
+static void ui_uart1_on(void) { if (s_uart_en[1] && !s_uart_inited[1]) ui_uart_init_ch(1); }
+static void ui_uart2_on(void) { if (s_uart_en[2] && !s_uart_inited[2]) ui_uart_init_ch(2); }
+static void ui_uart3_on(void) { if (s_uart_en[3] && !s_uart_inited[3]) ui_uart_init_ch(3); }
 
 /*===========================================================================
  * 陀螺仪页面 — IMU660RA 数据显示
@@ -568,64 +456,11 @@ static void ui_build_astra_tree(void)
         astra_new_slider_item("Speed KI", &s_ui_speed_ki,
                               1, 0, 60, ui_sync_control_values, ui_apply_pid_values, slider_icon));
 
-    /* ===== UART — 四通道独立控制 ===== */
-    /* 每个 UARTx 子页面: Enable开关 + Baud切换 + 实时信息 + 测试发送 */
-    astra_list_item_t *uart0_page = astra_new_list_item("UART0 A0/A1", switch_icon);
-    astra_list_item_t *uart1_page = astra_new_list_item("UART1 B4/B5", switch_icon);
-    astra_list_item_t *uart2_page = astra_new_list_item("UART2 A21/A22", switch_icon);
-    astra_list_item_t *uart3_page = astra_new_list_item("UART3 B12/B13", switch_icon);
-    ui_push_item(uart_page, uart0_page);
-    ui_push_item(uart_page, uart1_page);
-    ui_push_item(uart_page, uart2_page);
-    ui_push_item(uart_page, uart3_page);
-
-    /* UART0 */
-    ui_push_item(uart0_page,
-        astra_new_switch_item("Enable", &s_uart_chan[0].enabled,
-                              ui_uart0_sync, ui_uart_apply_enable, switch_icon));
-    ui_push_item(uart0_page,
-        astra_new_button_item("Switch Baud", ui_uart_baud_next, plus_icon));
-    ui_push_item(uart0_page,
-        astra_new_user_item("Live Info", ui_uart_info_init, ui_uart_info_loop,
-                            ui_uart_info_exit, list_icon));
-    ui_push_item(uart0_page,
-        astra_new_button_item("Test TX", ui_uart_test_tx, flag_icon));
-
-    /* UART1 */
-    ui_push_item(uart1_page,
-        astra_new_switch_item("Enable", &s_uart_chan[1].enabled,
-                              ui_uart1_sync, ui_uart_apply_enable, switch_icon));
-    ui_push_item(uart1_page,
-        astra_new_button_item("Switch Baud", ui_uart_baud_next, plus_icon));
-    ui_push_item(uart1_page,
-        astra_new_user_item("Live Info", ui_uart_info_init, ui_uart_info_loop,
-                            ui_uart_info_exit, list_icon));
-    ui_push_item(uart1_page,
-        astra_new_button_item("Test TX", ui_uart_test_tx, flag_icon));
-
-    /* UART2 */
-    ui_push_item(uart2_page,
-        astra_new_switch_item("Enable", &s_uart_chan[2].enabled,
-                              ui_uart2_sync, ui_uart_apply_enable, switch_icon));
-    ui_push_item(uart2_page,
-        astra_new_button_item("Switch Baud", ui_uart_baud_next, plus_icon));
-    ui_push_item(uart2_page,
-        astra_new_user_item("Live Info", ui_uart_info_init, ui_uart_info_loop,
-                            ui_uart_info_exit, list_icon));
-    ui_push_item(uart2_page,
-        astra_new_button_item("Test TX", ui_uart_test_tx, flag_icon));
-
-    /* UART3 */
-    ui_push_item(uart3_page,
-        astra_new_switch_item("Enable", &s_uart_chan[3].enabled,
-                              ui_uart3_sync, ui_uart_apply_enable, switch_icon));
-    ui_push_item(uart3_page,
-        astra_new_button_item("Switch Baud", ui_uart_baud_next, plus_icon));
-    ui_push_item(uart3_page,
-        astra_new_user_item("Live Info", ui_uart_info_init, ui_uart_info_loop,
-                            ui_uart_info_exit, list_icon));
-    ui_push_item(uart3_page,
-        astra_new_button_item("Test TX", ui_uart_test_tx, flag_icon));
+    /* ===== UART ===== */
+    ui_push_item(uart_page, astra_new_switch_item("UART0", &s_uart_en[0], NULL, ui_uart0_on, switch_icon));
+    ui_push_item(uart_page, astra_new_switch_item("UART1", &s_uart_en[1], NULL, ui_uart1_on, switch_icon));
+    ui_push_item(uart_page, astra_new_switch_item("UART2", &s_uart_en[2], NULL, ui_uart2_on, switch_icon));
+    ui_push_item(uart_page, astra_new_switch_item("UART3", &s_uart_en[3], NULL, ui_uart3_on, switch_icon));
 
     /* ===== IMU Gyro ===== */
     ui_push_item(imu_page,

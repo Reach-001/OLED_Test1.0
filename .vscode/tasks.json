@@ -35,6 +35,30 @@
             "command": "${command:eide.project.clean}",
             "group": "build",
             "problemMatcher": []
+        },
+        {
+            "label": "pyOCD 快速烧录（推荐）",
+            "type": "shell",
+            "command": "pyocd load -t mspm0g3507 build/Debug/OLED_Test1.0.bin",
+            "group": "build",
+            "problemMatcher": [],
+            "detail": "pyOCD 烧录 ~2s，自动比对跳过未改页（78KB/s），日常开发首选"
+        },
+        {
+            "label": "pyOCD 全量擦除烧录",
+            "type": "shell",
+            "command": "pyocd load -e chip -t mspm0g3507 build/Debug/OLED_Test1.0.bin",
+            "group": "build",
+            "problemMatcher": [],
+            "detail": "pyOCD 全片擦除后烧录，适用于 Flash 内容损坏或首次烧录"
+        },
+        {
+            "label": "OpenOCD 烧录（慢，63s）",
+            "type": "shell",
+            "command": "openocd -f linker/CFG.cfg -c \"program build/Debug/OLED_Test1.0.bin 0x00000000 verify reset exit\"",
+            "group": "build",
+            "problemMatcher": [],
+            "detail": "OpenOCD 烧录含校验，约 63 秒。日常开发请用 pyOCD"
         }
     ]
 }

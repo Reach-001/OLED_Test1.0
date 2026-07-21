@@ -105,7 +105,9 @@ targets:
     uploadConfigMap:
       OpenOCD:
         baseAddr: "0x00000000"
-        bin: ${ExecutableName}.hex
+        # 使用 bin 格式减少 OpenOCD 解析开销（hex 为 ASCII 文本，解析慢）
+        bin: ${ExecutableName}.bin
+        # interface/cmsis-dap.cfg 已优化：默认 10000kHz + CMSIS-DAP v2
         interface: cmsis-dap
         target: ti/mspm0
     uploader: OpenOCD

@@ -453,7 +453,7 @@ void astra_draw_list_item()
         /* 刻度线太窄则不画 (文字太长撑满了) */
         if (bar_w >= 20)
         {
-          int16_t line_y = _baseline + 3;
+          int16_t line_y = _y_item;  /* 与图标 y 中心对齐 */
           int16_t dot;
           if (_sl->value_max > _sl->value_min)
             dot = bar_x + (int16_t)((int32_t)(*_sl->value - _sl->value_min) * (bar_w - 4)
@@ -462,10 +462,10 @@ void astra_draw_list_item()
           if (dot < bar_x + 2) dot = bar_x + 2;
           if (dot > bar_x + bar_w - 2) dot = bar_x + bar_w - 2;
 
-          oled_set_draw_color(UI_COLOR_GRAY);
-          oled_draw_H_line(bar_x, line_y, bar_w);
+          /* 刻度线 + 位置指示: 选中行白底反色(黑色), 非选中行白线 */
           oled_set_draw_color(_c);
-          oled_draw_box(dot, line_y - 1, 4, 3);
+          oled_draw_H_line(bar_x, line_y, bar_w);
+          oled_draw_V_line(dot, line_y - 4, 9);
 
           /* 数值在刻度线右侧 */
           int16_t _vx = bar_x + bar_w + 6;

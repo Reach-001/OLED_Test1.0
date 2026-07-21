@@ -471,15 +471,11 @@ static void ui_build_astra_tree(void)
 }
 
 /*===========================================================================
- * 三键交互逻辑: KEY1=下一个, KEY2=进入, KEY3=返回, KEY1长按=根菜单
+ * 三键交互: KEY1=下一个, KEY2=进入/切换, KEY3=返回, KEY1长按=根菜单
  *===========================================================================*/
 
 /**
  * @brief 按键事件处理
- * @param key     按键编号 (BSP_KEY_1/2/3)
- * @param pressed 当前电平 (1=按下)
- * @param event   按键事件 (PRESS=单击, LONG_PRESS=长按)
- * @param now_ms  当前毫秒时间戳 (保留, 备用)
  */
 void app_ui_handle_key(bsp_key_id_enum key, uint8 pressed, bsp_key_event_enum event, uint32 now_ms)
 {
@@ -502,11 +498,25 @@ void app_ui_handle_key(bsp_key_id_enum key, uint8 pressed, bsp_key_event_enum ev
             default: break;
         }
     }
-    else if (event == KEY_EVENT_LONG_PRESS && key == BSP_KEY_1)
+    else if (event == KEY_EVENT_LONG_PRESS)
     {
-        /* KEY1 长按 → 回到根菜单 */
-        astra_init_list();
-        astra_push_info_bar("MAIN", 600);
+        switch (key)
+        {
+            case BSP_KEY_1:  /* KEY1 长按 → 回到根菜单 */
+                astra_init_list();
+                astra_push_info_bar("MAIN", 600);
+                break;
+            case BSP_KEY_2:  /* KEY2 长按 → 切换当前开关（不进入子菜单） */
+                if (astra_selector.selected_item != NULL
+                    && astra_selector.selected_item->type == switch_item)
+                {
+                    astra_switch_item_t *sw = astra_to_switch_item(astra_selector.selected_item);
+                    *sw->value = !*sw->value;
+                    if (sw->exit_function) sw->exit_function();
+                }
+                break;
+            default: break;
+        }
     }
 }
 

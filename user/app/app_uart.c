@@ -14,10 +14,10 @@
 #endif
 
 static app_uart_state_t s_uart[APP_UART_CHANNEL_NUM] = {
-    { true,  true,  UART_0, UART0_TX_A10,       UART0_RX_A11,       APP_UART_BAUD, 0, 0 },  /* UART0 debug 串口，系统已启 */
-    { true,  true,  UART_1, WIRELESS_UART_TX,   WIRELESS_UART_RX,   APP_UART_BAUD, 0, 0 },  /* UART1 无线串口，系统已启 */
-    { false, false, UART_2, UART2_TX_A21,       UART2_RX_A22,       APP_UART_BAUD, 0, 0 },
-    { false, false, UART_3, UART3_TX_B12,       UART3_RX_B13,       APP_UART_BAUD, 0, 0 },
+    { true,  true,  UART_0, UART0_TX_A10,       UART0_RX_A11,       APP_UART_BAUD, 0, 0, 0 },
+    { true,  true,  UART_1, WIRELESS_UART_TX,   WIRELESS_UART_RX,   APP_UART_BAUD, 0, 0, 0 },
+    { false, false, UART_2, UART2_TX_A21,       UART2_RX_A22,       APP_UART_BAUD, 0, 0, 0 },
+    { false, false, UART_3, UART3_TX_B12,       UART3_RX_B13,       APP_UART_BAUD, 0, 0, 0 },
 };
 
 static bool app_uart_valid_ch(uint8 ch)
@@ -38,6 +38,7 @@ void app_uart_init(void)
     /* 仅清零统计计数，不覆盖静态初始值 (enabled/inited 已在声明时设好) */
     for (uint8 ch = 0; ch < APP_UART_CHANNEL_NUM; ch++)
     {
+        s_uart[ch].tx_count = 0;
         s_uart[ch].rx_count = 0;
         s_uart[ch].last_rx  = 0;
     }
@@ -66,6 +67,16 @@ bool app_uart_set_enable(uint8 ch, bool enable)
     }
 
     return true;
+}
+
+void app_uart_send_test(uint8 ch)
+{
+    if (!app_uart_valid_ch(ch)) return;
+    if (!s_uart[ch].enabled || !s_uart[ch].inited) return;
+
+    const char *msg = "Hello World!\r\n";
+    uart_write_string(s_uart[ch].index, msg);
+    s_uart[ch].tx_count += 13;  /* 13 字节: "Hello World!\r\n" 不含 '\0' */
 }
 
 const app_uart_state_t *app_uart_get_state(uint8 ch)

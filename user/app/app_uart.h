@@ -21,12 +21,14 @@ typedef struct
     uart_rx_pin_enum rx_pin;
     uint32 baud;
     uint32 rx_count;
-    uint8 last_rx;
+    uint8  last_rx;
+    uint32 tx_count;           /**< 累计发送字节数 */
 } app_uart_state_t;
 
 void app_uart_init(void);
 void app_uart_task(void);
 bool app_uart_set_enable(uint8 ch, bool enable);
+void app_uart_send_test(uint8 ch);      /**< 发送 "Hello World!\r\n" 测试字符串 */
 const app_uart_state_t *app_uart_get_state(uint8 ch);
 const char *app_uart_pin_name(uint32 pin);
 

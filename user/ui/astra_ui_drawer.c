@@ -434,70 +434,47 @@ void astra_draw_list_item()
     {
       astra_slider_item_t *_sl = astra_to_slider_item(astra_selector.selected_item->parent->child_list_item[i]);
       if (_sl->init_function && astra_refresh_list_value && !_sl->is_confirmed)
-        _sl->init_function();  /* 调值中不刷新，防止硬件旧值覆盖用户修改 */
+        _sl->init_function();
 
       if (_row_visible)
       {
         astra_draw_list_icon(astra_selector.selected_item->parent->child_list_item[i]->icon, _x_item, _y_item);
 
+        /* 滑块条独占一行 (在文字下方), 不遮挡列表项文字 */
+        int16_t bar_y = _baseline + 4;                       /* 文字下方 4px */
+        int16_t bar_h = 6;
+        int16_t bar_x = 10 + _x_item;                        /* 与文字左对齐 */
+        int16_t bar_w = OLED_WIDTH - bar_x - 36;             /* 右侧留空给数值 */
+
         char _val_str[8] = {};
         sprintf(_val_str, "%d", *_sl->value);
-        int16_t _vw = (int16_t)(strlen(_val_str) * 8);
 
-        /* 滑块条: 画在图标右侧到数字左侧之间, 长度按比例 */
-        int16_t bar_h   = _is_sel ? 8 : 4;               /* 选中行更粗 */
-        int16_t bar_y   = _baseline - oled_get_str_height()/2 + (oled_get_str_height() - bar_h)/2;
-        int16_t num_w   = _vw + 12;                       /* 数字占用宽度 (含边距) */
-        int16_t bar_max = OLED_WIDTH - LIST_ITEM_RIGHT_MARGIN - num_w - 8;
-        int16_t bar_fill;
-
-        /* 计算比例长度 (避免除零) */
+        /* 填充比例 */
+        int16_t fill;
         if (_sl->value_max > _sl->value_min)
-          bar_fill = (int16_t)((int32_t)(*_sl->value - _sl->value_min) * bar_max
-                             / (_sl->value_max - _sl->value_min));
-        else
-          bar_fill = bar_max / 2;
+          fill = (int16_t)((int32_t)(*_sl->value - _sl->value_min) * bar_w
+                         / (_sl->value_max - _sl->value_min));
+        else fill = bar_w / 2;
+        if (fill < 0) fill = 0;
+        if (fill > bar_w) fill = bar_w;
 
-        if (bar_fill < 0) bar_fill = 0;
-        if (bar_fill > bar_max) bar_fill = bar_max;
-
-        int16_t bar_x = 24;                               /* 图标右侧起点 */
-
-        /* 轨道 (灰色底) */
+        /* 轨道 */
         oled_set_draw_color(UI_COLOR_GRAY);
-        oled_draw_box(bar_x, bar_y, bar_max, bar_h);
+        oled_draw_box(bar_x, bar_y, bar_w, bar_h);
 
-        /* 已填充部分 (白色或黑色, 取决于选中) */
+        /* 填充 */
         oled_set_draw_color(_is_sel ? UI_COLOR_BLACK : UI_LIST_TEXT_COLOR);
-        oled_draw_box(bar_x, bar_y, bar_fill, bar_h);
+        oled_draw_box(bar_x, bar_y, fill, bar_h);
 
-        /* 轨道边框 */
+        /* 细边框 */
         oled_set_draw_color(_c);
-        oled_draw_frame(bar_x - 1, bar_y - 1, bar_max + 2, bar_h + 2);
+        oled_draw_frame(bar_x - 1, bar_y - 1, bar_w + 2, bar_h + 2);
 
-        /* 数值 (滑块条右侧) */
-        int16_t _vx = bar_x + bar_max + 8;
+        /* 数值在条右侧 */
+        int16_t vx = bar_x + bar_w + 6;
         st7789_set_font((const void*)&font_8x16);
-
-        if (_sl->is_confirmed)
-        {
-          static uint32_t _last_tick = 0;
-          static bool _visible = false;
-          uint32_t _tick = get_ticks();
-          if (_visible)
-          {
-            oled_set_draw_color(_is_sel ? UI_COLOR_BLACK : UI_SLIDER_VALUE_BOX_COLOR);
-            oled_draw_R_box(_vx - 2, bar_y - 2, _vw + 8, bar_h + 8, 2);
-          }
-          oled_set_draw_color(UI_COLOR_BLACK);
-          oled_draw_str(_vx + 2, _baseline, _val_str);
-          if (_tick - _last_tick >= 1000) { _visible = !_visible; _last_tick = _tick; }
-        }
-        else
-        {
-          oled_set_draw_color(_c);
-          oled_draw_str(_vx + 2, _baseline, _val_str);
-        }
+        oled_set_draw_color(_c);
+        oled_draw_str(vx, _baseline, _val_str);
         st7789_set_font(astra_default_font);
       }
     }

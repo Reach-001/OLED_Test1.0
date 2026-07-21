@@ -135,6 +135,13 @@ int main(void)
             task_key();
         }
 
+        /* UART 轮询任务 */
+        if (g_task_flag.uart)
+        {
+            g_task_flag.uart = 0;
+            task_uart();
+        }
+
         /* UI 动画刷新任务 */
         if (g_task_flag.ui)
         {

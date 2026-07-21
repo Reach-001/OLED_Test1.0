@@ -23,6 +23,7 @@ typedef struct
     uint8 display;      /* 显示刷新任务 */
     uint8 ui;           /* UI 动画刷新任务 */
     uint8 key;          /* 按键扫描任务 */
+    uint8 uart;         /* UART 轮询任务 */
 } task_flag_t;
 
 /* 全局任务标志 */
@@ -74,6 +75,11 @@ void task_ui(void);
  * @brief   按键处理任务
  */
 void task_key(void);
+
+/**
+ * @brief   UART 轮询任务
+ */
+void task_uart(void);
 
 /**
  * @brief   获取循迹传感器数据指针（供 UI 等模块读取）

@@ -441,17 +441,24 @@ static void ui_build_astra_tree(void)
         astra_new_slider_item("Speed KI", &s_ui_speed_ki,
                               1, 0, 60, ui_sync_control_values, ui_apply_pid_values, slider_icon));
 
-    /* ===== UART — 通道行自带开关，进入后只显示参数 ===== */
-    astra_list_item_t *u0 = astra_new_switch_item("UART0", &s_uart_en[0], ui_u0_in, ui_u0_sw, switch_icon);
-    astra_list_item_t *u1 = astra_new_switch_item("UART1", &s_uart_en[1], ui_u1_in, ui_u1_sw, switch_icon);
-    astra_list_item_t *u2 = astra_new_switch_item("UART2", &s_uart_en[2], ui_u2_in, ui_u2_sw, switch_icon);
-    astra_list_item_t *u3 = astra_new_switch_item("UART3", &s_uart_en[3], ui_u3_in, ui_u3_sw, switch_icon);
+    /* ===== UART ===== */
+    astra_list_item_t *u0 = astra_new_list_item("UART0", switch_icon);
+    astra_list_item_t *u1 = astra_new_list_item("UART1", switch_icon);
+    astra_list_item_t *u2 = astra_new_list_item("UART2", switch_icon);
+    astra_list_item_t *u3 = astra_new_list_item("UART3", switch_icon);
     ui_push_item(uart_page, u0); ui_push_item(uart_page, u1);
     ui_push_item(uart_page, u2); ui_push_item(uart_page, u3);
 
+    ui_push_item(u0, astra_new_switch_item("Enable", &s_uart_en[0], ui_u0_in, ui_u0_sw, switch_icon));
     ui_push_item(u0, astra_new_user_item("Params", ui_u0_in, ui_uart_info_loop, ui_uart_out, list_icon));
+
+    ui_push_item(u1, astra_new_switch_item("Enable", &s_uart_en[1], ui_u1_in, ui_u1_sw, switch_icon));
     ui_push_item(u1, astra_new_user_item("Params", ui_u1_in, ui_uart_info_loop, ui_uart_out, list_icon));
+
+    ui_push_item(u2, astra_new_switch_item("Enable", &s_uart_en[2], ui_u2_in, ui_u2_sw, switch_icon));
     ui_push_item(u2, astra_new_user_item("Params", ui_u2_in, ui_uart_info_loop, ui_uart_out, list_icon));
+
+    ui_push_item(u3, astra_new_switch_item("Enable", &s_uart_en[3], ui_u3_in, ui_u3_sw, switch_icon));
     ui_push_item(u3, astra_new_user_item("Params", ui_u3_in, ui_uart_info_loop, ui_uart_out, list_icon));
 
     /* ===== IMU Gyro ===== */

@@ -433,29 +433,25 @@ static void ui_build_astra_tree(void)
         astra_new_slider_item("Speed KI", &s_ui_speed_ki,
                               1, 0, 60, ui_sync_control_values, ui_apply_pid_values, slider_icon));
 
-    /* ===== UART — 每通道: Enable + Test TX + Params ===== */
-    astra_list_item_t *u0 = astra_new_list_item("UART0", switch_icon);
-    astra_list_item_t *u1 = astra_new_list_item("UART1", switch_icon);
-    astra_list_item_t *u2 = astra_new_list_item("UART2", switch_icon);
-    astra_list_item_t *u3 = astra_new_list_item("UART3", switch_icon);
+    /* ===== UART — 4开关，KEY2长按进详情 ===== */
+    astra_list_item_t *u0 = astra_new_switch_item("UART0", &s_uart_en[0], ui_u0_in, ui_u0_sw, switch_icon);
+    astra_list_item_t *u1 = astra_new_switch_item("UART1", &s_uart_en[1], ui_u1_in, ui_u1_sw, switch_icon);
+    astra_list_item_t *u2 = astra_new_switch_item("UART2", &s_uart_en[2], ui_u2_in, ui_u2_sw, switch_icon);
+    astra_list_item_t *u3 = astra_new_switch_item("UART3", &s_uart_en[3], ui_u3_in, ui_u3_sw, switch_icon);
     ui_push_item(uart_page, u0); ui_push_item(uart_page, u1);
     ui_push_item(uart_page, u2); ui_push_item(uart_page, u3);
 
-    ui_push_item(u0, astra_new_switch_item("Enable",  &s_uart_en[0], ui_u0_in, ui_u0_sw, switch_icon));
-    ui_push_item(u0, astra_new_button_item("Test TX",  ui_uart_tx_test, flag_icon));
-    ui_push_item(u0, astra_new_user_item("Params",     ui_u0_in, ui_uart_info_loop, ui_uart_exit, list_icon));
+    ui_push_item(u0, astra_new_button_item("Test TX", ui_uart_tx_test, flag_icon));
+    ui_push_item(u0, astra_new_user_item("Params",   ui_u0_in, ui_uart_info_loop, ui_uart_exit, list_icon));
 
-    ui_push_item(u1, astra_new_switch_item("Enable",  &s_uart_en[1], ui_u1_in, ui_u1_sw, switch_icon));
-    ui_push_item(u1, astra_new_button_item("Test TX",  ui_uart_tx_test, flag_icon));
-    ui_push_item(u1, astra_new_user_item("Params",     ui_u1_in, ui_uart_info_loop, ui_uart_exit, list_icon));
+    ui_push_item(u1, astra_new_button_item("Test TX", ui_uart_tx_test, flag_icon));
+    ui_push_item(u1, astra_new_user_item("Params",   ui_u1_in, ui_uart_info_loop, ui_uart_exit, list_icon));
 
-    ui_push_item(u2, astra_new_switch_item("Enable",  &s_uart_en[2], ui_u2_in, ui_u2_sw, switch_icon));
-    ui_push_item(u2, astra_new_button_item("Test TX",  ui_uart_tx_test, flag_icon));
-    ui_push_item(u2, astra_new_user_item("Params",     ui_u2_in, ui_uart_info_loop, ui_uart_exit, list_icon));
+    ui_push_item(u2, astra_new_button_item("Test TX", ui_uart_tx_test, flag_icon));
+    ui_push_item(u2, astra_new_user_item("Params",   ui_u2_in, ui_uart_info_loop, ui_uart_exit, list_icon));
 
-    ui_push_item(u3, astra_new_switch_item("Enable",  &s_uart_en[3], ui_u3_in, ui_u3_sw, switch_icon));
-    ui_push_item(u3, astra_new_button_item("Test TX",  ui_uart_tx_test, flag_icon));
-    ui_push_item(u3, astra_new_user_item("Params",    ui_u3_in, ui_uart_info_loop, ui_uart_exit, list_icon));
+    ui_push_item(u3, astra_new_button_item("Test TX", ui_uart_tx_test, flag_icon));
+    ui_push_item(u3, astra_new_user_item("Params",   ui_u3_in, ui_uart_info_loop, ui_uart_exit, list_icon));
 
     /* ===== IMU Gyro ===== */
     ui_push_item(imu_page,
@@ -502,16 +498,10 @@ void app_ui_handle_key(bsp_key_id_enum key, uint8 pressed, bsp_key_event_enum ev
                 astra_init_list();
                 astra_push_info_bar("MAIN", 600);
                 break;
-            case BSP_KEY_2:  /* KEY2 长按 → 切换当前开关并进子页 */
+            case BSP_KEY_2:  /* KEY2 长按 → 进入子页（不切开关） */
                 if (astra_selector.selected_item != NULL
-                    && astra_selector.selected_item->type == switch_item
                     && astra_selector.selected_item->child_num > 0)
-                {
-                    astra_switch_item_t *sw = astra_to_switch_item(astra_selector.selected_item);
-                    *sw->value = !*sw->value;
-                    if (sw->exit_function) sw->exit_function();
                     astra_enter_child_item(astra_selector.selected_item);
-                }
                 break;
             default: break;
         }

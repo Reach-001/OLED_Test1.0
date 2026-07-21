@@ -57,11 +57,7 @@ bool app_uart_set_enable(uint8 ch, bool enable)
 
     s_uart[ch].enabled = enable;
 
-    /* UART0 是 debug 串口，只设软件标志不碰硬件 */
-    if (ch == 0) return true;
-
-    /* 关闭时无条件禁用硬件，并清除 inited。下次开启时重新 uart_init，
-     * 因为 DL_UART_Main_disable 会 SWRST 复位所有配置寄存器。 */
+    /* 硬件开关。disable → SWRST 复位配置 → inited=false */
     if (enable)
         DL_UART_Main_enable(uart_list[ch]);
     else {

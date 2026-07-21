@@ -14,8 +14,8 @@
 #endif
 
 static app_uart_state_t s_uart[APP_UART_CHANNEL_NUM] = {
-    { true,  true,  UART_0, UART0_TX_A10,       UART0_RX_A11,       APP_UART_BAUD, 0, 0 },  /* UART0 系统已启 (debug) */
-    { false, false, UART_1, WIRELESS_UART_TX,   WIRELESS_UART_RX,   APP_UART_BAUD, 0, 0 },
+    { true,  true,  UART_0, UART0_TX_A10,       UART0_RX_A11,       APP_UART_BAUD, 0, 0 },  /* UART0 debug 串口，系统已启 */
+    { true,  true,  UART_1, WIRELESS_UART_TX,   WIRELESS_UART_RX,   APP_UART_BAUD, 0, 0 },  /* UART1 无线串口，系统已启 */
     { false, false, UART_2, UART2_TX_A21,       UART2_RX_A22,       APP_UART_BAUD, 0, 0 },
     { false, false, UART_3, UART3_TX_B12,       UART3_RX_B13,       APP_UART_BAUD, 0, 0 },
 };
@@ -51,18 +51,23 @@ bool app_uart_set_enable(uint8 ch, bool enable)
         UART0, UART1, UART2, UART3
     };
 
+    /* 首次开启时初始化硬件 */
     if (enable && !s_uart[ch].inited)
         app_uart_hw_init(ch);
 
     s_uart[ch].enabled = enable;
 
-    /* 硬件层开关 UART 外设。UART0 是系统 debug 串口，只设标志不关硬件。 */
+    /* UART0 是 debug 串口，只设软件标志不碰硬件 */
     if (ch == 0) return true;
 
+    /* 关闭时无条件禁用硬件，并清除 inited。下次开启时重新 uart_init，
+     * 因为 DL_UART_Main_disable 会 SWRST 复位所有配置寄存器。 */
     if (enable)
         DL_UART_Main_enable(uart_list[ch]);
-    else if (s_uart[ch].inited)
+    else {
         DL_UART_Main_disable(uart_list[ch]);
+        s_uart[ch].inited = false;
+    }
 
     return true;
 }

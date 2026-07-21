@@ -549,11 +549,21 @@ void astra_draw_selector()
 
 void astra_draw_color_overlay()
 {
-  if (!in_astra || astra_selector.selected_item == NULL
-      || astra_is_in_user_item() || !astra_exit_animation_finished)
+  if (!in_astra || astra_selector.selected_item == NULL || astra_is_in_user_item())
     return;
 
   st7789_set_buffer_mode(0);
+
+  /* 沙漏动画期间: 擦除标题线上次直写的彩色像素, 避免新遮挡未覆盖时泄露 */
+  if (!astra_exit_animation_finished)
+  {
+#if UI_TITLE_ENABLE
+    oled_set_draw_color(UI_COLOR_BLACK);
+    oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
+#endif
+    st7789_set_buffer_mode(1);
+    return;
+  }
 
   /* ---- 选择器: RGB565 纯色圆角填充 + 白边框 ---- */
 #if UI_SELECTOR_FILL_ENABLE

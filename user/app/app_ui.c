@@ -46,7 +46,7 @@ static void ui_draw_boot_logo(void)
     oled_draw_UTF8(cx - 32, cy - 28, "2026");
 
     /* 分割线 */
-    oled_draw_hline(cx - 60, cy - 12, 120);
+    oled_draw_H_line(cx - 60, cy - 12, 120);
 
     /* 平台信息 */
     st7789_set_font(astra_default_font);
@@ -60,19 +60,19 @@ static void ui_draw_boot_logo(void)
     oled_set_draw_color(UI_COLOR_WHITE);
     oled_draw_UTF8(cx - 48, cy - 48, "Dian Sai");
     oled_draw_UTF8(cx - 32, cy - 28, "2026");
-    oled_draw_hline(cx - 60, cy - 12, 120);
+    oled_draw_H_line(cx - 60, cy - 12, 120);
 
     /* === 车身（简化赛车俯视图）=== */
     int16_t car_y = cy + 10;
 
     /* 底盘 */
-    oled_draw_rbox(cx - 50, car_y - 12, 100, 24, 6);
+    oled_draw_R_box(cx - 50, car_y - 12, 100, 24, 6);
 
     /* 车头（梯形，用横线叠加模拟） */
-    oled_draw_hline(cx + 38, car_y - 15, 14);
-    oled_draw_hline(cx + 36, car_y - 14, 16);
-    oled_draw_hline(cx + 34, car_y - 13, 16);
-    oled_draw_hline(cx + 38, car_y - 16, 12);
+    oled_draw_H_line(cx + 38, car_y - 15, 14);
+    oled_draw_H_line(cx + 36, car_y - 14, 16);
+    oled_draw_H_line(cx + 34, car_y - 13, 16);
+    oled_draw_H_line(cx + 38, car_y - 16, 12);
 
     /* 尾翼 */
     oled_draw_box(cx - 60, car_y - 18, 16, 4);
@@ -106,14 +106,14 @@ static void ui_draw_boot_logo(void)
         oled_set_draw_color(UI_COLOR_WHITE);
         oled_draw_UTF8(cx - 48, cy - 48, "Dian Sai");
         oled_draw_UTF8(cx - 32, cy - 28, "2026");
-        oled_draw_hline(cx - 60, cy - 12, 120);
+        oled_draw_H_line(cx - 60, cy - 12, 120);
 
         /* 赛车图标（简化版，复用帧2逻辑） */
-        oled_draw_rbox(cx - 50, car_y - 12, 100, 24, 6);
-        oled_draw_hline(cx + 38, car_y - 15, 14);
-        oled_draw_hline(cx + 36, car_y - 14, 16);
-        oled_draw_hline(cx + 34, car_y - 13, 16);
-        oled_draw_hline(cx + 38, car_y - 16, 12);
+        oled_draw_R_box(cx - 50, car_y - 12, 100, 24, 6);
+        oled_draw_H_line(cx + 38, car_y - 15, 14);
+        oled_draw_H_line(cx + 36, car_y - 14, 16);
+        oled_draw_H_line(cx + 34, car_y - 13, 16);
+        oled_draw_H_line(cx + 38, car_y - 16, 12);
         oled_draw_box(cx - 60, car_y - 18, 16, 4);
         oled_draw_box(cx + 34, car_y + 12, 12, 6);
         oled_set_draw_color(UI_COLOR_BLACK);
@@ -208,9 +208,9 @@ static void ui_uart_loop(void)
 
     /* 统计信息 */
     oled_set_draw_color(UI_COLOR_WHITE);
-    snprintf(_buf, sizeof(_buf), "TX: %lu", s_uart_tx_bytes);
+    snprintf(_buf, sizeof(_buf), "TX: %u", s_uart_tx_bytes);
     oled_draw_UTF8(8, 96, _buf);
-    snprintf(_buf, sizeof(_buf), "RX: %lu", s_uart_rx_bytes);
+    snprintf(_buf, sizeof(_buf), "RX: %u", s_uart_rx_bytes);
     oled_draw_UTF8(8, 114, _buf);
 }
 
@@ -295,6 +295,7 @@ static void ui_track_init(void)
 static void ui_track_loop(void)
 {
     const track_data_t *td = task_get_track_data();
+    track_data_t *td_mut = (track_data_t *)td;  /* 仅用于兼容非 const API */
 
     st7789_set_font(astra_default_font);
 
@@ -345,8 +346,8 @@ static void ui_track_loop(void)
     oled_set_draw_color(UI_COLOR_WHITE);
     char _st[40] = {};
     snprintf(_st, sizeof(_st), "LOST:%d X:%d TH:%d",
-             track_is_lost(td),
-             track_is_cross(td),
+             track_is_lost(td_mut),
+             track_is_cross(td_mut),
              track_get_threshold());
     oled_draw_UTF8(8, OLED_HEIGHT - 6, _st);
 }

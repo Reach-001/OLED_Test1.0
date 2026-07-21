@@ -11,6 +11,7 @@
 #include "bsp_track.h"
 #include "app_control.h"
 #include "app_ui.h"
+#include "app_uart.h"
 
 /* 任务标志由 PIT 中断置位，在 main.c 主循环中清零并执行。 */
 volatile task_flag_t g_task_flag = {0};
@@ -72,12 +73,10 @@ void task_timer_callback(void)
         g_task_flag.key = 1;
     }
 
-    /* 新增任务示例：
-     * 1. 在 board_config.h 添加 TASK_UART_PERIOD
-     * 2. 在 task_flag_t 添加 uint8 uart
-     * 3. 在这里按周期置位 g_task_flag.uart
-     * 4. 在 main.c 主循环中执行 task_uart()
-     */
+    if (s_task_tick % TASK_UART_PERIOD == 0)
+    {
+        g_task_flag.uart = 1;
+    }
 
     /* 计数器溢出处理 */
     if (s_task_tick >= TASK_TICK_MAX)
@@ -111,6 +110,8 @@ static void pit_callback(uint32 flag, void *param)
  *-----------------------------------------------------------*/
 void task_init(void)
 {
+    app_uart_init();
+
     /* 初始化定时器 */
     pit_ms_init(TASK_PIT, TASK_PERIOD_MS, pit_callback, NULL);
 
@@ -228,6 +229,19 @@ void task_key(void)
     {
         bsp_key_clear_event(BSP_KEY_2);
     }
+
+    if (bsp_key_get_event(BSP_KEY_3) == KEY_EVENT_PRESS)
+    {
+        bsp_key_clear_event(BSP_KEY_3);
+    }
+}
+
+/*-----------------------------------------------------------
+ * UART 轮询任务
+ *-----------------------------------------------------------*/
+void task_uart(void)
+{
+    app_uart_task();
 }
 
 /*-----------------------------------------------------------

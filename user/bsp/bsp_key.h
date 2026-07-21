@@ -13,6 +13,7 @@ typedef enum
 {
     BSP_KEY_1 = 0,
     BSP_KEY_2,
+    BSP_KEY_3,
     BSP_KEY_NUM
 } bsp_key_id_enum;
 

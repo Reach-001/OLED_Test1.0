@@ -7,8 +7,9 @@
 
 /* 按键引脚数组 */
 static const gpio_pin_enum key_pins[BSP_KEY_NUM] = {
-    KEY1_PIN,
-    KEY2_PIN,
+    KEY1_PIN,   /* B21 */
+    KEY2_PIN,   /* A0  */
+    KEY3_PIN,   /* A28 */
 };
 
 /* 按键状态结构 */

@@ -32,7 +32,8 @@
  * 按键配置
  *===========================================================================*/
 #define KEY1_PIN                B21                 /* 按键1 / UI */
-#define KEY2_PIN                A1                  /* 按键2 */
+#define KEY2_PIN                A0                  /* 按键2 */
+#define KEY3_PIN                A28                 /* 按键3 */
 #define KEY_ACTIVE_LEVEL        0                   /* 按键按下电平 (0=低电平触发) */
 #define KEY_DEBOUNCE_COUNT      2                   /* 消抖次数，单位为按键扫描周期 */
 #define KEY_LONG_PRESS_COUNT    50                  /* 长按次数，50 * 20ms = 1s */
@@ -137,6 +138,7 @@
 #define TASK_DISPLAY_PERIOD     50                  /* 显示刷新: 50ms */
 #define TASK_UI_PERIOD          20                  /* UI 动画刷新: 20ms (50Hz) */
 #define TASK_KEY_PERIOD         10                  /* 按键扫描: 10ms */
+#define TASK_UART_PERIOD        5                   /* UART 轮询: 5ms */
 /* 新增任务时，在这里添加 TASK_xxx_PERIOD，再到 app_task.h/c 和 main.c 接入。 */
 #define TASK_TICK_MAX           10000               /* 调度计数器回绕阈值 */
 

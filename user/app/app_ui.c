@@ -24,6 +24,135 @@
 #include <stdio.h>
 
 /*===========================================================================
+ * 开机 Logo 动画
+ *===========================================================================*/
+
+/**
+ * @brief 绘制开机 Logo — 赛车 + 标题 + 进度条
+ * @note 调用后阻塞约 2 秒，展示动画后自动进入主菜单
+ */
+static void ui_draw_boot_logo(void)
+{
+    int16_t cx = OLED_WIDTH  / 2;   /**< 屏幕水平中点 */
+    int16_t cy = OLED_HEIGHT / 2;   /**< 屏幕垂直中点 */
+
+    /* ---- 第1帧: 标题文字浮现 ---- */
+    oled_clear_buffer();
+    oled_set_draw_color(UI_COLOR_WHITE);
+
+    /* 项目名称 */
+    st7789_set_font(astra_default_font);
+    oled_draw_UTF8(cx - 48, cy - 48, "Dian Sai");
+    oled_draw_UTF8(cx - 32, cy - 28, "2026");
+
+    /* 分割线 */
+    oled_draw_hline(cx - 60, cy - 12, 120);
+
+    /* 平台信息 */
+    st7789_set_font(astra_default_font);
+    oled_draw_str(cx - 32, cy + 6, "MSPM0G3507");
+
+    oled_send_buffer();
+    delay(600);
+
+    /* ---- 第2帧: 赛车图标出现 ---- */
+    oled_clear_buffer();
+    oled_set_draw_color(UI_COLOR_WHITE);
+    oled_draw_UTF8(cx - 48, cy - 48, "Dian Sai");
+    oled_draw_UTF8(cx - 32, cy - 28, "2026");
+    oled_draw_hline(cx - 60, cy - 12, 120);
+
+    /* === 车身（简化赛车俯视图）=== */
+    int16_t car_y = cy + 10;
+
+    /* 底盘 */
+    oled_draw_rbox(cx - 50, car_y - 12, 100, 24, 6);
+
+    /* 车头（梯形，用横线叠加模拟） */
+    oled_draw_hline(cx + 38, car_y - 15, 14);
+    oled_draw_hline(cx + 36, car_y - 14, 16);
+    oled_draw_hline(cx + 34, car_y - 13, 16);
+    oled_draw_hline(cx + 38, car_y - 16, 12);
+
+    /* 尾翼 */
+    oled_draw_box(cx - 60, car_y - 18, 16, 4);
+
+    /* 前轮 */
+    oled_draw_box(cx + 34, car_y + 12, 12, 6);
+    oled_set_draw_color(UI_COLOR_BLACK);
+    oled_draw_box(cx + 37, car_y + 13, 6, 4);
+    oled_set_draw_color(UI_COLOR_WHITE);
+
+    /* 后轮 */
+    oled_draw_box(cx - 46, car_y + 12, 12, 6);
+    oled_set_draw_color(UI_COLOR_BLACK);
+    oled_draw_box(cx - 43, car_y + 13, 6, 4);
+    oled_set_draw_color(UI_COLOR_WHITE);
+
+    /* 车窗 */
+    oled_draw_box(cx - 10, car_y - 9, 18, 8);
+
+    oled_send_buffer();
+    delay(600);
+
+    /* ---- 第3帧: 进度条动画 ---- */
+    uint8_t bar_target = 120;
+
+    for (uint8_t step = 0; step <= bar_target; step += 4)
+    {
+        oled_clear_buffer();
+
+        /* 标题区 */
+        oled_set_draw_color(UI_COLOR_WHITE);
+        oled_draw_UTF8(cx - 48, cy - 48, "Dian Sai");
+        oled_draw_UTF8(cx - 32, cy - 28, "2026");
+        oled_draw_hline(cx - 60, cy - 12, 120);
+
+        /* 赛车图标（简化版，复用帧2逻辑） */
+        oled_draw_rbox(cx - 50, car_y - 12, 100, 24, 6);
+        oled_draw_hline(cx + 38, car_y - 15, 14);
+        oled_draw_hline(cx + 36, car_y - 14, 16);
+        oled_draw_hline(cx + 34, car_y - 13, 16);
+        oled_draw_hline(cx + 38, car_y - 16, 12);
+        oled_draw_box(cx - 60, car_y - 18, 16, 4);
+        oled_draw_box(cx + 34, car_y + 12, 12, 6);
+        oled_set_draw_color(UI_COLOR_BLACK);
+        oled_draw_box(cx + 37, car_y + 13, 6, 4);
+        oled_set_draw_color(UI_COLOR_WHITE);
+        oled_draw_box(cx - 46, car_y + 12, 12, 6);
+        oled_set_draw_color(UI_COLOR_BLACK);
+        oled_draw_box(cx - 43, car_y + 13, 6, 4);
+        oled_set_draw_color(UI_COLOR_WHITE);
+        oled_draw_box(cx - 10, car_y - 9, 18, 8);
+
+        /* 进度条背景 */
+        oled_set_draw_color(UI_COLOR_GRAY);
+        oled_draw_frame(cx - 62, OLED_HEIGHT - 24, 124, 10);
+        oled_set_draw_color(UI_COLOR_BLACK);
+        oled_draw_box(cx - 60, OLED_HEIGHT - 22, 120, 6);
+
+        /* 进度条填充（渐变增长） */
+        oled_set_draw_color(UI_COLOR_WHITE);
+        oled_draw_box(cx - 60, OLED_HEIGHT - 22, step, 6);
+
+        oled_send_buffer();
+
+        /* 进度条速度控制: 前快后慢 ~500ms */
+        if (step < 60)      delay(15);
+        else if (step < 100) delay(20);
+        else                 delay(30);
+    }
+
+    /* 进度条填满后短暂停留 */
+    delay(200);
+
+    /* 清屏过渡 */
+    oled_clear_buffer();
+    oled_send_buffer();
+    delay(100);
+}
+
+/*===========================================================================
  * 控件状态变量
  *=========================================================================*/
 
@@ -412,6 +541,10 @@ static void ui_reset_to_root(void)
 void app_ui_init(void)
 {
     astra_ui_driver_init();
+
+    /* 开机 Logo 动画：赛车图标 + 进度条，约 2 秒 */
+    ui_draw_boot_logo();
+
     ui_build_astra_tree();
 
     in_astra = true;

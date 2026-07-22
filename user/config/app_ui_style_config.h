@@ -72,12 +72,12 @@
 #define UI_LIST_TOP_MARGIN         26               /**< 首个列表项基线前的顶部边距 (留出选择框空间) */
 #define UI_LIST_ITEM_SPACING_147   24               /**< 320x172 屏列表项间距 */
 #define UI_LIST_ITEM_SPACING_114   18               /**< 240x135 屏列表项间距 */
-#define UI_LIST_ITEM_LEFT_MARGIN   8                /**< 列表项左边距 */
-#define UI_LIST_ITEM_RIGHT_MARGIN  42               /**< 列表项右侧控件预留宽度 */
+#define UI_LIST_ITEM_LEFT_MARGIN   5                /**< 列表项左边距 */
+#define UI_LIST_ITEM_RIGHT_MARGIN  30               /**< 列表项右侧控件预留宽度 */
 #define UI_LIST_MAX_CHILD_NUM      16               /**< 单个列表最多子项数 */
-#define UI_SCROLLBAR_COLOR         UI_COLOR_WHITE   /**< 滚动条基本颜色（轨道） */
+#define UI_SCROLLBAR_COLOR         3                /**< 滚动条基本颜色（轨道） */
 #define UI_SCROLLBAR_ACCENT_ENABLE 1                /**< 滚动条强调色启用标志（1=启用） */
-#define UI_SCROLLBAR_ACCENT_COLOR  3    /**< 滚动条滑块/强调色 */
+#define UI_SCROLLBAR_ACCENT_COLOR  3                /**< 滚动条滑块/强调色 */
 
 /*===========================================================================
  * 选择框（高亮指示器）配置

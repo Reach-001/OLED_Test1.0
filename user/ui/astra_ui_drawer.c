@@ -410,7 +410,7 @@ void astra_draw_list_item()
         /* 刻度线太窄则不画 (文字太长撑满了) */
         if (bar_w >= 20)
         {
-          int16_t line_y = _y_item + 5;  /* 在22px选择器中居中，线上部给图标，下部给指示器 */
+          int16_t line_y = _y_item;  /* 与图标和文字垂直中心对齐 */
           int16_t dot;
           if (_sl->value_max > _sl->value_min)
             dot = bar_x + (int16_t)((int32_t)(*_sl->value - _sl->value_min) * (bar_w - 4)
@@ -419,21 +419,18 @@ void astra_draw_list_item()
           if (dot < bar_x + 2) dot = bar_x + 2;
           if (dot > bar_x + bar_w - 2) dot = bar_x + bar_w - 2;
 
-          /* 刻度线 + 位置指示 — 始终白色，因滑块元素在选择框外不受反色保护 */
-          oled_set_draw_color(UI_LIST_TEXT_COLOR);
+          /* 刻度线 + 指示器 — 选择框已扩宽覆盖，用 _c 反色即黑底白线/白底黑线 */
+          oled_set_draw_color(_c);
           oled_draw_H_line(bar_x, line_y, bar_w);
           oled_draw_V_line(dot, line_y - 4, 9);
 
-          /* 数值在刻度线右侧 — 始终白色，因在选择框外不受反色保护 */
+          /* 数值 — 与内容文字同基线对齐，选择框覆盖范围内可正常反色 */
           int16_t _vx = bar_x + bar_w + 6;
           st7789_set_font((const void*)&font_8x16);
-          oled_set_draw_color(UI_LIST_TEXT_COLOR);
-          if (!(_sl->is_confirmed && ((get_ticks() / 500) & 1)))
-            oled_draw_str(_vx + 2, _baseline + 2, _val_str);
-          st7789_set_font(astra_default_font);
-
-          /* 恢复回 _c，保证后续文字绘制用正确的选中反色 */
           oled_set_draw_color(_c);
+          if (!(_sl->is_confirmed && ((get_ticks() / 500) & 1)))
+            oled_draw_str(_vx + 2, _baseline, _val_str);
+          st7789_set_font(astra_default_font);
         }
       }
     }

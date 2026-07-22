@@ -201,10 +201,12 @@ void astra_refresh_selector_position()
   astra_selector.y_selector_trg = astra_selector.selected_item->y_list_item_trg
                                   - oled_get_str_height();
 
-  /* 宽度: 开关项满宽(右侧有控件)，滑块和普通项紧跟文字 */
+  /* 宽度: 开关满宽(右侧指示器), 滑块阔宽覆盖刻度线+数值, 普通项紧跟文字 */
   astra_selector.w_selector_trg = (astra_selector.selected_item->type == switch_item)
     ? OLED_WIDTH - UI_SELECTOR_FULL_MARGIN
-    : oled_get_UTF8_width(astra_selector.selected_item->content) + UI_SELECTOR_TEXT_PADDING;
+    : (astra_selector.selected_item->type == slider_item)
+      ? OLED_WIDTH - 16
+      : oled_get_UTF8_width(astra_selector.selected_item->content) + UI_SELECTOR_TEXT_PADDING;
 
   /* 高度: 普通18, 滑块扩展4px覆盖刻度线和指示器，上下分布均匀 */
   astra_selector.h_selector_trg = (astra_selector.selected_item->type == slider_item)

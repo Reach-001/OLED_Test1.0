@@ -17,10 +17,6 @@
 
 extern const st7789_font_t font_8x16;  /* ASCII 8x16 字体, draw_str 需要切字体 */
 
-/* 滚动条拇指位移 — 帧缓冲内白框+黑滑块，纯差分自驱动 */
-static float g_scrollbar_thumb_y     = 0;
-static float g_scrollbar_thumb_y_trg = 0;
-
 /* 彩色点缀使用 ST7789 直写，主体 UI 仍走 1-bit 帧缓冲。 */
 static void astra_draw_overlay_rframe(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r, uint8_t color)
 {
@@ -304,30 +300,6 @@ void astra_draw_list_appearance()
   oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
 #endif
 
-  /* 右侧滚动条 — 纯帧缓冲白底+黑滑块，不依赖 overlay，零闪烁 */
-  {
-    uint8_t sb_n = astra_selector.selected_item->parent->child_num;
-    if (sb_n > 1)
-    {
-      int16_t sb_top = LIST_INFO_BAR_HEIGHT + 2;  /* 绿线下 2px */
-      int16_t sb_h   = OLED_HEIGHT - sb_top;
-      int16_t sb_x   = OLED_WIDTH - UI_SCROLLBAR_X_OFFSET - UI_SCROLLBAR_WIDTH;
-      float   part   = (float)sb_h / (float)sb_n;
-
-      g_scrollbar_thumb_y_trg = sb_top + astra_selector.selected_index * part;
-      extern void astra_animation(float *_pos, float _posTrg, float _speed);
-      astra_animation(&g_scrollbar_thumb_y, g_scrollbar_thumb_y_trg, 92);
-
-      /* 轨道 — 2px 白框 */
-      oled_set_draw_color(UI_LIST_TEXT_COLOR);
-      oled_draw_V_line(sb_x, sb_top, sb_h);
-      oled_draw_V_line(sb_x + UI_SCROLLBAR_WIDTH - 1, sb_top, sb_h);
-
-      /* 滑块 — 白底黑空，移动时触发差分 */
-      oled_set_draw_color(UI_COLOR_BLACK);
-      oled_draw_box(sb_x + 1, (int16_t)g_scrollbar_thumb_y, UI_SCROLLBAR_WIDTH - 2, (int16_t)part);
-    }
-  }
 }
 
 /*===========================================================================
@@ -579,6 +551,39 @@ void astra_draw_color_overlay()
     astra_draw_overlay_rframe(_x_pop - 2, (int16_t)astra_pop_up.y_pop_up,
                               (int16_t)(astra_pop_up.w_pop_up + 4), POP_UP_HEIGHT, 3,
                               UI_POPUP_ACCENT_COLOR);
+  }
+
+  /* ---- 指示器：1px 竖线 + 同高滑块，与选择框水平位置对齐 ---- */
+  {
+    uint8_t sb_n = astra_selector.selected_item->parent->child_num;
+    if (sb_n > 1)
+    {
+      int16_t sb_top = LIST_INFO_BAR_HEIGHT + 2;
+      int16_t sb_h   = OLED_HEIGHT - sb_top;
+      int16_t sb_x   = OLED_WIDTH - UI_SCROLLBAR_X_OFFSET - UI_SCROLLBAR_WIDTH;
+      int16_t sb_mid = sb_x + UI_SCROLLBAR_WIDTH / 2;
+      int16_t tb_x   = sb_x;
+      int16_t tb_w   = UI_SCROLLBAR_WIDTH;
+
+      /* 黑擦整列 */
+      oled_set_draw_color(UI_COLOR_BLACK);
+      oled_draw_box(tb_x, sb_top, tb_w, sb_h);
+
+      /* 灰轨线 */
+      oled_set_draw_color(UI_SCROLLBAR_COLOR);
+      oled_draw_V_line(sb_mid, sb_top, sb_h);
+
+      /* 滑块 — 高=选择框，y=选择器同步 */
+      int16_t thumb_y = (int16_t)(astra_selector.y_selector + astra_camera.y_camera);
+      int16_t thumb_h = (int16_t)astra_selector.h_selector;
+      if (thumb_y < sb_top) { thumb_h -= (sb_top - thumb_y); thumb_y = sb_top; }
+      if (thumb_y + thumb_h > OLED_HEIGHT) thumb_h = OLED_HEIGHT - thumb_y;
+      if (thumb_h > 0)
+      {
+        oled_set_draw_color(UI_SCROLLBAR_THUMB_COLOR);
+        oled_draw_box(tb_x, thumb_y, tb_w, thumb_h);
+      }
+    }
   }
 
   /* 选择框棋盘格 — 直写真彩色（帧缓冲 1-bit 不支持彩色编号） */

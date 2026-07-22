@@ -146,6 +146,9 @@ void st7789_set_buffer_mode(uint8_t enable);
 /** @brief 发送缓冲区到屏幕 */
 #define oled_send_buffer()              st7789_send_buffer()
 
+/** @brief 标记帧缓冲失效，下一帧全屏刷新（直写层绘制后调用） */
+#define oled_invalidate_buffer()          st7789_invalidate_buffer()
+
 /** @brief 发送局部缓冲区到屏幕 */
 #define oled_send_area_buffer(x, y, w, h) st7789_send_area_buffer((int16_t)(x), (int16_t)(y), (int16_t)(w), (int16_t)(h))
 
@@ -166,6 +169,7 @@ void st7789_set_font_mode(uint8_t mode);
 void st7789_set_font_dir(uint8_t dir);
 void st7789_clear_screen(void);
 void st7789_send_buffer(void);
+void st7789_invalidate_buffer(void);
 void st7789_send_area_buffer(int16_t x, int16_t y, int16_t w, int16_t h);
 
 /* --- 像素/几何绘制 --- */

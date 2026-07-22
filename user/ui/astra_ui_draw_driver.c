@@ -644,6 +644,15 @@ void st7789_send_buffer(void)
     memcpy(g_last_framebuffer, g_framebuffer, sizeof(g_framebuffer));
 }
 
+/**
+ * @brief 标记帧缓冲失效 — 直写层绘制后调用，确保下一帧全屏刷新覆盖直写残留
+ * @note  直写层像素在帧缓冲之外，差分比较无法感知变化，必须全刷
+ */
+void st7789_invalidate_buffer(void)
+{
+    g_last_framebuffer_valid = false;
+}
+
 void st7789_send_area_buffer(int16_t x, int16_t y, int16_t w, int16_t h)
 {
     int16_t x1 = x + w - 1;

@@ -515,7 +515,7 @@ void astra_draw_list_icon(astra_list_item_icon_t icon, uint16_t x, uint16_t y)
 
 void astra_draw_selector()
 {
-  int16_t _xs = astra_camera.x_camera + LIST_ITEM_LEFT_MARGIN;
+  int16_t _xs = astra_camera.x_camera + LIST_ITEM_LEFT_MARGIN + SELECTOR_X_OFFSET;
   int16_t _ys = astra_selector.y_selector + astra_camera.y_camera;
   int16_t _w  = (int16_t)astra_selector.w_selector;
   int16_t _h  = (int16_t)astra_selector.h_selector;
@@ -602,7 +602,7 @@ void astra_draw_color_overlay()
   /* 选择框棋盘格 — 直写真彩色（帧缓冲 1-bit 不支持彩色编号） */
 #if UI_SELECTOR_FILL_ENABLE
   {
-    int16_t _xs = astra_camera.x_camera + LIST_ITEM_LEFT_MARGIN;
+    int16_t _xs = astra_camera.x_camera + LIST_ITEM_LEFT_MARGIN + SELECTOR_X_OFFSET;
     int16_t _ys = astra_selector.y_selector + astra_camera.y_camera;
     int16_t _w  = (int16_t)astra_selector.w_selector;
     int16_t _h  = (int16_t)astra_selector.h_selector;

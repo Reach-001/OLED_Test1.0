@@ -63,6 +63,7 @@ extern void astra_push_pop_up(char *_content, const uint16_t _span);
 #endif
 #define LIST_ITEM_OFFSET 12      /**< 列表项偏移 (原 8)                */
 #define LIST_ITEM_LEFT_MARGIN UI_LIST_ITEM_LEFT_MARGIN
+#define SELECTOR_X_OFFSET     UI_SELECTOR_X_OFFSET    /**< 选择框独立左偏移，不影响文字 */
 #define LIST_ITEM_RIGHT_MARGIN UI_LIST_ITEM_RIGHT_MARGIN
 #if UI_TITLE_ENABLE
 #define LIST_INFO_BAR_HEIGHT UI_TITLE_AREA_HEIGHT

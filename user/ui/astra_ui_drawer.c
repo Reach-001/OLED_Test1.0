@@ -328,6 +328,7 @@ void astra_draw_list_appearance()
       oled_draw_box(sb_x + 1, (int16_t)g_scrollbar_thumb_y, UI_SCROLLBAR_WIDTH - 2, (int16_t)part);
     }
   }
+}
 
 /*===========================================================================
  * 列表项绘制 — 遍历父节点的所有子项

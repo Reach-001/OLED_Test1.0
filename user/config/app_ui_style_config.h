@@ -75,9 +75,10 @@
 #define UI_LIST_ITEM_LEFT_MARGIN   4                /**< 列表项左边距 */
 #define UI_LIST_ITEM_RIGHT_MARGIN  45               /**< 列表项右侧控件预留宽度 */
 #define UI_LIST_MAX_CHILD_NUM      16               /**< 单个列表最多子项数 */
-#define UI_SCROLLBAR_COLOR         3                /**< 滚动条基本颜色（轨道） */
-#define UI_SCROLLBAR_ACCENT_ENABLE 1                /**< 滚动条强调色启用标志（1=启用） */
-#define UI_SCROLLBAR_ACCENT_COLOR  3                /**< 滚动条滑块/强调色 */
+#define UI_SCROLLBAR_COLOR         2                /**< 滚动条轨道色（灰色，低调） */
+#define UI_SCROLLBAR_THUMB_COLOR    3                /**< 滚动条滑块色（天蓝，强调） */
+#define UI_SCROLLBAR_WIDTH          3                /**< 滚动条总宽 (px) */
+#define UI_SCROLLBAR_X_OFFSET       1                /**< 滚动条距右边界 (px) */
 
 /*===========================================================================
  * 选择框（高亮指示器）配置
@@ -86,8 +87,8 @@
 #define UI_SELECTOR_RADIUS         4                /**< 选择框圆角半径（像素） */
 #define UI_SELECTOR_HEIGHT         18               /**< 选择框高度 */
 #define UI_SELECTOR_TEXT_PADDING   20               /**< 普通选项选择框水平内边距 */
-#define UI_SELECTOR_FULL_MARGIN    25               /**< 开关选择框左右总预留 */
-#define UI_SELECTOR_SLIDER_RIGHT_GAP  8            /**< 滑块选择框右端到滚动条间距 */
+#define UI_SELECTOR_FULL_MARGIN    35               /**< 开关选择框左右总预留 */
+#define UI_SELECTOR_SLIDER_RIGHT_GAP  11            /**< 滑块选择框右端到滚动条间距 */
 #define UI_SELECTOR_FRAME_COLOR    UI_COLOR_MINT    /**< 选择框边框颜色 (RGB565直写, 薄荷绿醒目) */
 #define UI_SELECTOR_X_OFFSET       -5               /**< 选择框左偏移（负=左移，正=右移） */
 #define UI_SELECTOR_FILL_ENABLE    1                /**< 选择框棋盘格填充 (1=图案灰底, 0=仅线框) */

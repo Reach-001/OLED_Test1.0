@@ -17,10 +17,9 @@
 
 extern const st7789_font_t font_8x16;  /* ASCII 8x16 字体, draw_str 需要切字体 */
 
-/* 滚动条动画 — overlay 独享，不经过帧缓冲，消除 SPI 双写闪烁 */
+/* 滚动条拇指位移 — 帧缓冲内白框+黑滑块，纯差分自驱动 */
 static float g_scrollbar_thumb_y     = 0;
 static float g_scrollbar_thumb_y_trg = 0;
-static int   g_scrollbar_child_num   = 0;           /**< 子项数，变化时重新计算 part_len */
 
 /* 彩色点缀使用 ST7789 直写，主体 UI 仍走 1-bit 帧缓冲。 */
 static void astra_draw_overlay_rframe(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r, uint8_t color)
@@ -305,26 +304,28 @@ void astra_draw_list_appearance()
   oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
 #endif
 
-  /* 滚动条白区 + 黑滑块 → 滑块移动触发差分，overlay 覆彩无白擦 */
+  /* 右侧滚动条 — 纯帧缓冲白底+黑滑块，不依赖 overlay，零闪烁 */
   {
     uint8_t sb_n = astra_selector.selected_item->parent->child_num;
     if (sb_n > 1)
     {
-      int16_t sb_top = LIST_INFO_BAR_HEIGHT;
+      int16_t sb_top = LIST_INFO_BAR_HEIGHT + 2;  /* 绿线下 2px */
       int16_t sb_h   = OLED_HEIGHT - sb_top;
       int16_t sb_x   = OLED_WIDTH - UI_SCROLLBAR_X_OFFSET - UI_SCROLLBAR_WIDTH;
       float   part   = (float)sb_h / (float)sb_n;
 
-      g_scrollbar_thumb_y_trg = sb_top + 2  /* 绿线间隙 */
-                                + astra_selector.selected_index * part;
+      g_scrollbar_thumb_y_trg = sb_top + astra_selector.selected_index * part;
       extern void astra_animation(float *_pos, float _posTrg, float _speed);
       astra_animation(&g_scrollbar_thumb_y, g_scrollbar_thumb_y_trg, 92);
 
-      /* 白区比滑块大 2px 覆盖顶部，确保滑块上移时旧位有白底覆盖 */
+      /* 轨道 — 2px 白框 */
       oled_set_draw_color(UI_LIST_TEXT_COLOR);
-      oled_draw_box(sb_x, sb_top, UI_SCROLLBAR_WIDTH, sb_h);
+      oled_draw_V_line(sb_x, sb_top, sb_h);
+      oled_draw_V_line(sb_x + UI_SCROLLBAR_WIDTH - 1, sb_top, sb_h);
+
+      /* 滑块 — 白底黑空，移动时触发差分 */
       oled_set_draw_color(UI_COLOR_BLACK);
-      oled_draw_box(sb_x, (int16_t)g_scrollbar_thumb_y, UI_SCROLLBAR_WIDTH, (int16_t)part);
+      oled_draw_box(sb_x + 1, (int16_t)g_scrollbar_thumb_y, UI_SCROLLBAR_WIDTH - 2, (int16_t)part);
     }
   }
 
@@ -560,25 +561,6 @@ void astra_draw_color_overlay()
   oled_set_draw_color(UI_TITLE_LINE_COLOR);
   oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
 #endif
-
-  /* ---- 右侧滚动条 — 帧缓冲白底已刷，overlay 只画轨+滑 ---- */
-  {
-    uint8_t sb_n = astra_selector.selected_item->parent->child_num;
-    if (sb_n > 1)
-    {
-      int16_t sb_top = LIST_INFO_BAR_HEIGHT + 2;        /* 与绿线 2px */
-      int16_t sb_h   = OLED_HEIGHT - sb_top;
-      int16_t sb_x   = OLED_WIDTH - UI_SCROLLBAR_X_OFFSET - UI_SCROLLBAR_WIDTH;
-      int16_t trk_x  = sb_x + UI_SCROLLBAR_WIDTH / 2;
-      float   part   = (float)sb_h / (float)sb_n;
-
-      oled_set_draw_color(UI_SCROLLBAR_COLOR);
-      oled_draw_V_line(trk_x, sb_top, sb_h);
-
-      oled_set_draw_color(UI_SCROLLBAR_THUMB_COLOR);
-      oled_draw_box(sb_x, (int16_t)g_scrollbar_thumb_y, UI_SCROLLBAR_WIDTH, (int16_t)part);
-    }
-  }
 
   /* 信息栏/弹窗的彩色强调边框 */
   if (astra_info_bar.is_running)

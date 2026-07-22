@@ -518,12 +518,31 @@ void app_ui_handle_key(bsp_key_id_enum key, uint8 pressed, bsp_key_event_enum ev
  * 公共 API
  *=========================================================================*/
 
+/*===========================================================================
+ * 自定义标题回调 — 在 app_ui.c 统一管理所有页面标题
+ *===========================================================================*/
+
+static const char *ui_custom_title(astra_list_item_t *parent)
+{
+    /* 根菜单 / 无父节点 → 自定义根标题 */
+    if (parent == NULL || parent->layer == 0)
+        return "小车调试";
+
+    /* 子菜单标题：根据父节点 content 映射更多样化的显示名。
+     * 此处可直接改字符串，也可用 if/switch 按菜单分支返回不同文字。 */
+    return parent->content;
+}
+
 /**
  * @brief UI 模块初始化
  */
 void app_ui_init(void)
 {
     astra_ui_driver_init();
+
+    /* 注册标题回调 — 在 build tree 之前设置 */
+    astra_custom_title_cb = ui_custom_title;
+
     ui_draw_boot_logo();
 
     /* 从 app_uart 同步初始状态到 UI */

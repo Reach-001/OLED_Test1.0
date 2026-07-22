@@ -66,28 +66,28 @@ astra_switch_item_t *astra_to_switch_item(astra_list_item_t *_astra_list_item)
 {
   if (_astra_list_item != NULL && _astra_list_item->type == switch_item)
     return (astra_switch_item_t*)_astra_list_item;
-  return (astra_switch_item_t*)astra_get_root_list();
+  return NULL;
 }
 
 astra_button_item_t *astra_to_button_item(astra_list_item_t *_astra_list_item)
 {
   if (_astra_list_item != NULL && _astra_list_item->type == button_item)
     return (astra_button_item_t*)_astra_list_item;
-  return (astra_button_item_t*)astra_get_root_list();
+  return NULL;
 }
 
 astra_slider_item_t *astra_to_slider_item(astra_list_item_t *_astra_list_item)
 {
   if (_astra_list_item != NULL && _astra_list_item->type == slider_item)
     return (astra_slider_item_t*)_astra_list_item;
-  return (astra_slider_item_t*)astra_get_root_list();
+  return NULL;
 }
 
 astra_user_item_t *astra_to_user_item(astra_list_item_t *_astra_list_item)
 {
   if (_astra_list_item != NULL && _astra_list_item->type == user_item)
     return (astra_user_item_t*)_astra_list_item;
-  return (astra_user_item_t*)astra_get_root_list();
+  return NULL;
 }
 
 /* --- 根节点 --  */
@@ -392,6 +392,10 @@ void astra_selector_exit_current_item()
     }
     astra_selector.selected_index = _temp_index;
     astra_selector.selected_item = parent;
+    /* 重置选择器位置避免跨屏幕滑行动画 */
+    astra_set_font(astra_default_font);
+    astra_selector.y_selector_trg = parent->y_list_item_trg - oled_get_str_height();
+    astra_selector.y_selector = astra_selector.y_selector_trg;
     astra_camera.y_camera = 0;
     astra_camera.y_camera_trg = 0;
     return;
@@ -420,6 +424,10 @@ void astra_selector_exit_current_item()
   }
   astra_selector.selected_index = _temp_index;
   astra_selector.selected_item = astra_selector.selected_item->parent;
+  /* 重置选择器位置避免跨屏幕滑行动画 */
+  astra_set_font(astra_default_font);
+  astra_selector.y_selector_trg = astra_selector.selected_item->y_list_item_trg - oled_get_str_height();
+  astra_selector.y_selector = astra_selector.y_selector_trg;
   /* 返回父列表时重置相机偏移，防止子菜单留存的偏移把父菜单推出屏幕 */
   astra_camera.y_camera = 0;
   astra_camera.y_camera_trg = 0;

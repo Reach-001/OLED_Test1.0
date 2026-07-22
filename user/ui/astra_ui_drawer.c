@@ -17,6 +17,9 @@
 
 extern const st7789_font_t font_8x16;  /* ASCII 8x16 字体, draw_str 需要切字体 */
 
+/* 自定义标题回调 — app_ui 设置后优先调用 */
+astra_title_cb_t astra_custom_title_cb = NULL;
+
 /* 彩色点缀使用 ST7789 直写，主体 UI 仍走 1-bit 帧缓冲。 */
 static void astra_draw_overlay_rframe(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r, uint8_t color)
 {
@@ -29,6 +32,15 @@ static const char *astra_current_title(void)
   if (astra_selector.selected_item == NULL) return "ASTRA UI";
 
   astra_list_item_t *parent = astra_selector.selected_item->parent;
+
+  /* 应用层注册了自定义标题回调 → 优先调用 */
+  if (astra_custom_title_cb)
+  {
+    const char *custom = astra_custom_title_cb(parent);
+    if (custom) return custom;
+  }
+
+  /* 默认：根→"ASTRA UI"，子→父节点名 */
   if (parent == NULL || parent->layer == 0) return "ASTRA UI";
   return parent->content;
 }
@@ -218,8 +230,8 @@ void astra_draw_info_bar()
   /* 裁切下半圆角 */
   oled_set_draw_color(UI_INFO_BG_COLOR);
   oled_draw_H_line(_x_bar + 2, _y2 - 2, (int16_t)(astra_info_bar.w_info_bar - 4));
-  oled_draw_pixel(_x_bar + 1, _y2 - 3);
-  oled_draw_pixel(_x_bar - 2, _y2 - 3);
+  oled_draw_pixel(_x_bar + 1, _y2 - 3);                                 /* 左下圆角裁切 */
+  oled_draw_pixel(_x_bar + (int16_t)astra_info_bar.w_info_bar - 2, _y2 - 3);  /* 右下圆角裁切 */
 
   /* 文字 */
   int16_t _text_w = oled_get_UTF8_width(astra_info_bar.content);
@@ -293,9 +305,9 @@ void astra_draw_list_appearance()
   int16_t title_x = (OLED_WIDTH - title_w) / 2;
   if (title_x < 2) title_x = 2;
 
-  oled_set_draw_color(UI_TITLE_TEXT_COLOR);
+  /* 帧缓冲只负责触发差分刷新，真实颜色由 overlay 直写覆盖。 */
+  oled_set_draw_color(UI_LIST_TEXT_COLOR);
   oled_draw_UTF8(title_x, UI_TITLE_BASELINE_Y, astra_current_title());
-  /* 在帧缓冲中画白线触发差分刷新，直写层会覆上彩色版本 */
   oled_set_draw_color(UI_LIST_TEXT_COLOR);
   oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
 #endif
@@ -400,15 +412,19 @@ void astra_draw_list_item()
       {
         astra_draw_list_icon(astra_selector.selected_item->parent->child_list_item[i]->icon, _x_item, _y_item);
 
-        /* 图标 + 文字 + 刻度线 + 数值, 共一行。
-         * 文字宽 → 刻度线自动收缩, 长文字条短, 短文字条长。 */
+        /* 数值优先固定在右侧，屏幕空间不足时只压缩/省略刻度线。 */
         char _val_str[8] = {};
         sprintf(_val_str, "%d", *_sl->value);
-        int16_t _vw     = (int16_t)(strlen(_val_str) * 8);
         int16_t _txt_w  = oled_get_UTF8_width(astra_selector.selected_item->parent->child_list_item[i]->content);
         int16_t bar_gap = 6;                                          /* 文字与刻度线间隙 */
         int16_t bar_x   = 10 + _x_item + _txt_w + bar_gap;           /* 文字末尾 + 间隙 */
-        int16_t bar_w   = OLED_WIDTH - bar_x - _vw - 16;             /* 延伸至值前，16px 留滚动条间距 */
+        int16_t value_right = OLED_WIDTH - 18;                       /* 右侧避开滚动条/边缘 */
+
+        st7789_set_font((const void*)&font_8x16);
+        int16_t _vw = oled_get_str_width(_val_str);
+        int16_t _vx = value_right - _vw;
+        int16_t bar_w = _vx - bar_x - 4;                             /* 延伸至值前 */
+        st7789_set_font(astra_default_font);
 
         /* 刻度线太窄则不画 (文字太长撑满了) */
         if (bar_w >= 20)
@@ -426,15 +442,13 @@ void astra_draw_list_item()
           oled_set_draw_color(_c);
           oled_draw_H_line(bar_x, line_y, bar_w);
           oled_draw_V_line(dot, line_y - 4, 9);
-
-          /* 数值 — 与内容文字同基线对齐，选择框覆盖范围内可正常反色 */
-          int16_t _vx = bar_x + bar_w + 2;                            /* 紧贴刻度线右端 */
-          st7789_set_font((const void*)&font_8x16);
-          oled_set_draw_color(_c);
-          if (!(_sl->is_confirmed && ((get_ticks() / 500) & 1)))
-            oled_draw_str(_vx + 2, _baseline, _val_str);
-          st7789_set_font(astra_default_font);
         }
+
+        st7789_set_font((const void*)&font_8x16);
+        oled_set_draw_color(_c);
+        if (!(_sl->is_confirmed && ((get_ticks() / 500) & 1)))
+          oled_draw_str(_vx, _baseline, _val_str);
+        st7789_set_font(astra_default_font);
       }
     }
     /* ---- 用户自定义项 / 未知类型 ---- */
@@ -555,7 +569,19 @@ void astra_draw_color_overlay()
     return;
   }
 
-  /* 标题线已在帧缓冲画白线，不在此重复绘制（避免白→彩闪烁） */
+#if UI_TITLE_ENABLE
+  {
+    int16_t title_w = oled_get_UTF8_width(astra_current_title());
+    int16_t title_x = (OLED_WIDTH - title_w) / 2;
+    if (title_x < 2) title_x = 2;
+
+    st7789_set_font(astra_default_font);
+    oled_set_draw_color(UI_TITLE_TEXT_COLOR);
+    oled_draw_UTF8(title_x, UI_TITLE_BASELINE_Y, astra_current_title());
+    oled_set_draw_color(UI_TITLE_LINE_COLOR);
+    oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
+  }
+#endif
 
   /* 信息栏/弹窗的彩色强调边框 */
   if (astra_info_bar.is_running)

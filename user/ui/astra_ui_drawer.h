@@ -41,4 +41,8 @@ extern void astra_draw_list();
 /** @brief 彩色点缀叠层 — oled_send_buffer() 后直写 */
 extern void astra_draw_color_overlay();
 
+/** @brief 自定义标题回调 — app_ui 设置后优先调用，返回 NULL 则走默认逻辑 */
+typedef const char* (*astra_title_cb_t)(astra_list_item_t *parent);
+extern astra_title_cb_t astra_custom_title_cb;
+
 #endif /* ASTRA_UI_DRAWER_H */

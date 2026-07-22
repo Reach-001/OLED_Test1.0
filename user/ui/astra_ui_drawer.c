@@ -531,13 +531,6 @@ void astra_draw_selector()
    * 帧缓冲和内容一次性发送到屏幕, 不存在直写层覆盖问题。 */
   oled_set_draw_color(UI_LIST_TEXT_COLOR);
   oled_draw_R_box(_xs, _ys, _w, _h, _r);
-
-  /* 棋盘格过渡（颜色/宽度/密度可配置） */
-  oled_set_draw_color(UI_SELECTOR_CHESS_COLOR);
-  for (int16_t px = _w; px < _w + UI_SELECTOR_CHESS_WIDTH; px += UI_SELECTOR_CHESS_STEP)
-    for (int16_t py = 0; py < _h; py++)
-      if ((px + py) % 2 == 0)
-        oled_draw_pixel(_xs + px, _ys + py);
 #endif
 }
 
@@ -581,6 +574,25 @@ void astra_draw_color_overlay()
                               (int16_t)(astra_pop_up.w_pop_up + 4), POP_UP_HEIGHT, 3,
                               UI_POPUP_ACCENT_COLOR);
   }
+
+  /* 选择框棋盘格 — 直写真彩色（帧缓冲 1-bit 不支持彩色编号） */
+#if UI_SELECTOR_FILL_ENABLE
+  {
+    int16_t _xs = astra_camera.x_camera + LIST_ITEM_LEFT_MARGIN;
+    int16_t _ys = astra_selector.y_selector + astra_camera.y_camera;
+    int16_t _w  = (int16_t)astra_selector.w_selector;
+    int16_t _h  = (int16_t)astra_selector.h_selector;
+
+    if (_ys > LIST_INFO_BAR_HEIGHT)
+    {
+      oled_set_draw_color(UI_SELECTOR_CHESS_COLOR);
+      for (int16_t px = _w; px < _w + UI_SELECTOR_CHESS_WIDTH; px += UI_SELECTOR_CHESS_STEP)
+        for (int16_t py = 0; py < _h; py++)
+          if ((px + py) % 2 == 0)
+            oled_draw_pixel(_xs + px, _ys + py);
+    }
+  }
+#endif
 
   st7789_set_buffer_mode(1);
 }

@@ -409,7 +409,7 @@ void astra_draw_list_item()
         int16_t _txt_w  = oled_get_UTF8_width(astra_selector.selected_item->parent->child_list_item[i]->content);
         int16_t bar_gap = 6;                                          /* 文字与刻度线间隙 */
         int16_t bar_x   = 10 + _x_item + _txt_w + bar_gap;           /* 文字末尾 + 间隙 */
-        int16_t bar_w   = OLED_WIDTH - bar_x - _vw - 22;             /* 右侧留数值空间 */
+        int16_t bar_w   = OLED_WIDTH - bar_x - _vw - 16;             /* 延伸至值前，16px 留滚动条间距 */
 
         /* 刻度线太窄则不画 (文字太长撑满了) */
         if (bar_w >= 20)
@@ -429,7 +429,7 @@ void astra_draw_list_item()
           oled_draw_V_line(dot, line_y - 4, 9);
 
           /* 数值 — 与内容文字同基线对齐，选择框覆盖范围内可正常反色 */
-          int16_t _vx = bar_x + bar_w + 6;
+          int16_t _vx = bar_x + bar_w + 2;                            /* 紧贴刻度线右端 */
           st7789_set_font((const void*)&font_8x16);
           oled_set_draw_color(_c);
           if (!(_sl->is_confirmed && ((get_ticks() / 500) & 1)))

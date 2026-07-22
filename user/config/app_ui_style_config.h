@@ -13,27 +13,21 @@
 #define _APP_UI_STYLE_CONFIG_H_
 
 /*===========================================================================
- * 颜色系统 — 添加新颜色只需在 UI_COLOR_LIST 末尾加一行 X(编号,RGB565值,英文名)
- *   界面代码中使用 UI_COLOR_英文名 (如 UI_COLOR_RED) 引用颜色编号
- *   驱动层自动查表获取 RGB565 色值
+ * 颜色系统 — 加新颜色：先加 UI_COLOR_xxx 编号，再加 UI_RGB565_xxx 色值
  *=========================================================================*/
 
-/* X(编号, RGB565, 英文名) — 一元一色，编号必须连续递增 */
-#define UI_COLOR_LIST \
-  X(0, 0x0000, BLACK) \
-  X(1, 0xFFFF, WHITE) \
-  X(2, 0x8410, GRAY)  \
-  X(3, 0x06FF, SKY)   \
-  X(4, 0x07F0, MINT)  \
-  X(5, 0xFDE0, AMBER) \
-  X(6, 0xF81F, ROSE)
+/* 颜色编号（驱动层用编号查 RGB565 表） */
+#define UI_COLOR_BLACK  0
+#define UI_COLOR_WHITE  1
+#define UI_COLOR_GRAY   2
+#define UI_COLOR_SKY    3
+#define UI_COLOR_MINT   4
+#define UI_COLOR_AMBER  5
+#define UI_COLOR_ROSE   6
+#define UI_COLOR_PINK   7
+#define UI_COLOR_COUNT  8                /**< 颜色总数，加颜色后 +1 */
 
-/* 自动生成 UI_COLOR_BLACK=0, UI_COLOR_WHITE=1, ... 枚举 */
-#define X(idx, rgb, name) UI_COLOR_##name = idx,
-typedef enum { UI_COLOR_LIST UI_COLOR_COUNT } ui_color_t;
-#undef X
-
-/* 兼容旧 UI_RGB565_xxx 宏 — 新增颜色优先用 UI_COLOR_LIST，此处保留旧引用 */
+/* RGB565 色值（加颜色后在此补一行，并在 draw_driver.c 色表中末尾追加） */
 #define UI_RGB565_BLACK  0x0000
 #define UI_RGB565_WHITE  0xFFFF
 #define UI_RGB565_GRAY   0x8410
@@ -41,6 +35,7 @@ typedef enum { UI_COLOR_LIST UI_COLOR_COUNT } ui_color_t;
 #define UI_RGB565_MINT   0x07F0
 #define UI_RGB565_AMBER  0xFDE0
 #define UI_RGB565_ROSE   0xF81F
+#define UI_RGB565_PINK   0xED14
 
 /*===========================================================================
  * 标题栏配置
@@ -79,9 +74,9 @@ typedef enum { UI_COLOR_LIST UI_COLOR_COUNT } ui_color_t;
 #define UI_SELECTOR_FILL_ENABLE    1                /**< 选择框棋盘格填充 (1=图案灰底, 0=仅线框) */
 
 //选中框右侧棋盘设置
-#define UI_SELECTOR_CHESS_COLOR     UI_LIST_TEXT_COLOR /**< 棋盘格颜色 */
-#define UI_SELECTOR_CHESS_WIDTH     8                /**< 棋盘格宽度 (px) */
-#define UI_SELECTOR_CHESS_STEP      2                /**< 棋盘格列步进 (1=密, 2=默认, 3=疏) */
+#define UI_SELECTOR_CHESS_COLOR     7               /**< 棋盘格颜色 */
+#define UI_SELECTOR_CHESS_WIDTH     5               /**< 棋盘格宽度 (px) */
+#define UI_SELECTOR_CHESS_STEP      1                /**< 棋盘格列步进 (1=密, 2=默认, 3=疏) */
 
 /*===========================================================================
  * 弹出提示框（信息提示 / 确认框）配置

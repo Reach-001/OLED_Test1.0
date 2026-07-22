@@ -68,18 +68,25 @@
 #endif
 
 /*===========================================================================
- * 颜色表 — 由 app_ui_style_config.h 的 UI_COLOR_LIST 自动生成
+ * 颜色表 — 由 UI_RGB565_xxx 宏组成，加颜色时在此数组末尾补一行
  *===========================================================================*/
 
-#define X(idx, rgb, name) [idx] = rgb,
-static const uint16_t g_rgb565_table[] = { UI_COLOR_LIST };
-#undef X
+static const uint16_t g_rgb565_table[] = {
+    [UI_COLOR_BLACK] = UI_RGB565_BLACK,
+    [UI_COLOR_WHITE] = UI_RGB565_WHITE,
+    [UI_COLOR_GRAY]  = UI_RGB565_GRAY,
+    [UI_COLOR_SKY]   = UI_RGB565_SKY,
+    [UI_COLOR_MINT]  = UI_RGB565_MINT,
+    [UI_COLOR_AMBER] = UI_RGB565_AMBER,
+    [UI_COLOR_ROSE]  = UI_RGB565_ROSE,
+    [UI_COLOR_PINK]  = UI_RGB565_PINK,
+};
 
 /** @brief 根据颜色编号获取 RGB565 色值 */
 static inline uint16_t color_rgb(uint8_t idx)
 {
     if (idx < UI_COLOR_COUNT) return g_rgb565_table[idx];
-    return g_rgb565_table[UI_COLOR_WHITE];
+    return UI_RGB565_WHITE;
 }
 
 /*===========================================================================

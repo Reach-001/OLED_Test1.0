@@ -300,7 +300,10 @@ void astra_draw_list_appearance()
   oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
 #endif
 
-  /* 帧缓冲中画白轨+黑滑块→位置变化驱动差分刷新，overlay 只上色 */
+  /* 帧缓冲：1px白轨 + 3px白滑块。滑块移动时：
+   *   旧位 像素 1→0(轨外变黑) 触发行刷新 → 白轨残留擦掉
+   *   新位 像素 0→1(轨外变白) 触发行刷新 → 白底给 overlay 干净面
+   * overlay 灰线覆白轨、色块覆白滑块，无黑擦无白边 */
   {
     uint8_t sb_n = astra_selector.selected_item->parent->child_num;
     if (sb_n > 1)
@@ -310,18 +313,18 @@ void astra_draw_list_appearance()
       int16_t sb_x   = OLED_WIDTH - UI_SCROLLBAR_X_OFFSET - UI_SCROLLBAR_WIDTH;
       int16_t sb_mid = sb_x + UI_SCROLLBAR_WIDTH / 2;
 
-      /* 白竖线 */
+      /* 1px 白轨 */
       oled_set_draw_color(UI_LIST_TEXT_COLOR);
       oled_draw_V_line(sb_mid, sb_top, sb_h);
 
-      /* 黑滑块 — 位置=选择器，动画驱动差异保证差分必刷 */
-      int16_t thumb_y  = (int16_t)(astra_selector.y_selector + astra_camera.y_camera);
-      int16_t thumb_h  = (int16_t)astra_selector.h_selector;
+      /* 3px 白滑块 → 轨外像素从 0→1 触发差分 */
+      int16_t thumb_y = (int16_t)(astra_selector.y_selector + astra_camera.y_camera);
+      int16_t thumb_h = (int16_t)astra_selector.h_selector;
       if (thumb_y < sb_top) { thumb_h -= (sb_top - thumb_y); thumb_y = sb_top; }
       if (thumb_y + thumb_h > OLED_HEIGHT) thumb_h = OLED_HEIGHT - thumb_y;
       if (thumb_h > 0)
       {
-        oled_set_draw_color(UI_COLOR_BLACK);
+        oled_set_draw_color(UI_LIST_TEXT_COLOR);
         oled_draw_box(sb_x, thumb_y, UI_SCROLLBAR_WIDTH, thumb_h);
       }
     }

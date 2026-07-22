@@ -68,18 +68,18 @@
 #endif
 
 /*===========================================================================
- * 颜色表 — 由 UI_RGB565_xxx 宏组成，加颜色时在此数组末尾补一行
+ * 颜色表 — 由 UI_RGB565_xxx 宏组成，编号与色值一一对应，加颜色在末尾补
  *===========================================================================*/
 
 static const uint16_t g_rgb565_table[] = {
-    [UI_COLOR_BLACK] = UI_RGB565_BLACK,
-    [UI_COLOR_WHITE] = UI_RGB565_WHITE,
-    [UI_COLOR_GRAY]  = UI_RGB565_GRAY,
-    [UI_COLOR_SKY]   = UI_RGB565_SKY,
-    [UI_COLOR_MINT]  = UI_RGB565_MINT,
-    [UI_COLOR_AMBER] = UI_RGB565_AMBER,
-    [UI_COLOR_ROSE]  = UI_RGB565_ROSE,
-    [UI_COLOR_PINK]  = UI_RGB565_PINK,
+    [UI_COLOR_BLACK] = UI_RGB565_BLACK,   /**< 0 — 黑色 */
+    [UI_COLOR_WHITE] = UI_RGB565_WHITE,   /**< 1 — 白色 */
+    [UI_COLOR_GRAY]  = UI_RGB565_GRAY,    /**< 2 — 灰色 */
+    [UI_COLOR_SKY]   = UI_RGB565_SKY,     /**< 3 — 天蓝色 */
+    [UI_COLOR_MINT]  = UI_RGB565_MINT,    /**< 4 — 薄荷绿 */
+    [UI_COLOR_AMBER] = UI_RGB565_AMBER,   /**< 5 — 琥珀色 */
+    [UI_COLOR_ROSE]  = UI_RGB565_ROSE,    /**< 6 — 玫瑰红 */
+    [UI_COLOR_PINK]  = UI_RGB565_PINK,    /**< 7 — 粉色 */
 };
 
 /** @brief 根据颜色编号获取 RGB565 色值 */

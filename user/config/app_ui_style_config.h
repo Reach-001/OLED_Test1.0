@@ -14,28 +14,29 @@
 
 /*===========================================================================
  * 颜色系统 — 加新颜色：先加 UI_COLOR_xxx 编号，再加 UI_RGB565_xxx 色值
+ *   编号和色值必须一一对应，末尾补一行后 UI_COLOR_COUNT +1
  *=========================================================================*/
 
 /* 颜色编号（驱动层用编号查 RGB565 表） */
-#define UI_COLOR_BLACK  0
-#define UI_COLOR_WHITE  1
-#define UI_COLOR_GRAY   2
-#define UI_COLOR_SKY    3
-#define UI_COLOR_MINT   4
-#define UI_COLOR_AMBER  5
-#define UI_COLOR_ROSE   6
-#define UI_COLOR_PINK   7
-#define UI_COLOR_COUNT  8                /**< 颜色总数，加颜色后 +1 */
+#define UI_COLOR_BLACK  0   /**< 黑色 — 背景、暗色 */
+#define UI_COLOR_WHITE  1   /**< 白色 — 前景、高亮 */
+#define UI_COLOR_GRAY   2   /**< 灰色 — 中性、次级文字 */
+#define UI_COLOR_SKY    3   /**< 天蓝色 — 醒目、信息 */
+#define UI_COLOR_MINT   4   /**< 薄荷绿 — 清新、确认 */
+#define UI_COLOR_AMBER  5   /**< 琥珀色 — 警告、滑块 */
+#define UI_COLOR_ROSE   6   /**< 玫瑰红 — 强调、按钮 */
+#define UI_COLOR_PINK   7   /**< 粉色 — 棋盘格装饰 */
+#define UI_COLOR_COUNT  8   /**< 颜色总数，加颜色后 +1 */
 
 /* RGB565 色值（加颜色后在此补一行，并在 draw_driver.c 色表中末尾追加） */
-#define UI_RGB565_BLACK  0x0000
-#define UI_RGB565_WHITE  0xFFFF
-#define UI_RGB565_GRAY   0x8410
-#define UI_RGB565_SKY    0x06FF
-#define UI_RGB565_MINT   0x07F0
-#define UI_RGB565_AMBER  0xFDE0
-#define UI_RGB565_ROSE   0xF81F
-#define UI_RGB565_PINK   0xED14
+#define UI_RGB565_BLACK  0x0000  /**< 纯黑 */
+#define UI_RGB565_WHITE  0xFFFF  /**< 纯白 */
+#define UI_RGB565_GRAY   0x8410  /**< 中性灰（R4 G8 B4） */
+#define UI_RGB565_SKY    0x06FF  /**< 高饱和蓝青 */
+#define UI_RGB565_MINT   0x07F0  /**< 高饱和薄荷绿 */
+#define UI_RGB565_AMBER  0xFDE0  /**< 明亮琥珀黄 */
+#define UI_RGB565_ROSE   0xF81F  /**< 高饱和玫瑰红 */
+#define UI_RGB565_PINK   0xED14  /**< 柔和粉色 */
 
 /*===========================================================================
  * 标题栏配置

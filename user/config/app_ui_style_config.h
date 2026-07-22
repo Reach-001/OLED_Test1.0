@@ -13,30 +13,46 @@
 #define _APP_UI_STYLE_CONFIG_H_
 
 /*===========================================================================
- * 颜色系统 — 加新颜色：先加 UI_COLOR_xxx 编号，再加 UI_RGB565_xxx 色值
- *   编号和色值必须一一对应，末尾补一行后 UI_COLOR_COUNT +1
+ * 颜色系统 — 加新颜色：在末尾补一对 UI_COLOR_xxx 和 UI_RGB565_xxx
+ *   UI_COLOR_COUNT 同步 +1，驱动层色表数组末尾也补一行
+ *
+ *   编号  宏名              色值     说明
+ *   ────  ────────────────  ──────   ──────────
+ *    0    UI_COLOR_BLACK   0x0000   黑色 — 背景
+ *    1    UI_COLOR_WHITE   0xFFFF   白色 — 前景
+ *    2    UI_COLOR_GRAY    0x8410   灰色 — 次级
+ *    3    UI_COLOR_SKY     0x06FF   天蓝 — 信息
+ *    4    UI_COLOR_MINT    0x07F0   薄荷绿 — 确认
+ *    5    UI_COLOR_AMBER   0xFDE0   琥珀 — 警告
+ *    6    UI_COLOR_ROSE    0xF81F   玫瑰红 — 强调
+ *    7    UI_COLOR_PINK    0xED14   粉色 — 装饰
  *=========================================================================*/
 
-/* 颜色编号（驱动层用编号查 RGB565 表） */
-#define UI_COLOR_BLACK  0   /**< 黑色 — 背景、暗色 */
-#define UI_COLOR_WHITE  1   /**< 白色 — 前景、高亮 */
-#define UI_COLOR_GRAY   2   /**< 灰色 — 中性、次级文字 */
-#define UI_COLOR_SKY    3   /**< 天蓝色 — 醒目、信息 */
-#define UI_COLOR_MINT   4   /**< 薄荷绿 — 清新、确认 */
-#define UI_COLOR_AMBER  5   /**< 琥珀色 — 警告、滑块 */
-#define UI_COLOR_ROSE   6   /**< 玫瑰红 — 强调、按钮 */
-#define UI_COLOR_PINK   7   /**< 粉色 — 棋盘格装饰 */
-#define UI_COLOR_COUNT  8   /**< 颜色总数，加颜色后 +1 */
+#define UI_COLOR_BLACK    0      // 0x0000  黑色 — 背景
+#define UI_RGB565_BLACK   0x0000
 
-/* RGB565 色值（加颜色后在此补一行，并在 draw_driver.c 色表中末尾追加） */
-#define UI_RGB565_BLACK  0x0000  /**< 纯黑 */
-#define UI_RGB565_WHITE  0xFFFF  /**< 纯白 */
-#define UI_RGB565_GRAY   0x8410  /**< 中性灰（R4 G8 B4） */
-#define UI_RGB565_SKY    0x06FF  /**< 高饱和蓝青 */
-#define UI_RGB565_MINT   0x07F0  /**< 高饱和薄荷绿 */
-#define UI_RGB565_AMBER  0xFDE0  /**< 明亮琥珀黄 */
-#define UI_RGB565_ROSE   0xF81F  /**< 高饱和玫瑰红 */
-#define UI_RGB565_PINK   0xED14  /**< 柔和粉色 */
+#define UI_COLOR_WHITE    1      // 0xFFFF  白色 — 前景
+#define UI_RGB565_WHITE   0xFFFF
+
+#define UI_COLOR_GRAY     2      // 0x8410  灰色 — 次级
+#define UI_RGB565_GRAY    0x8410
+
+#define UI_COLOR_SKY      3      // 0x06FF  天蓝 — 信息
+#define UI_RGB565_SKY     0x06FF
+
+#define UI_COLOR_MINT     4      // 0x07F0  薄荷绿 — 确认
+#define UI_RGB565_MINT    0x07F0
+
+#define UI_COLOR_AMBER    5      // 0xFDE0  琥珀 — 警告
+#define UI_RGB565_AMBER   0xFDE0
+
+#define UI_COLOR_ROSE     6      // 0xF81F  玫瑰红 — 强调
+#define UI_RGB565_ROSE    0xF81F
+
+#define UI_COLOR_PINK     7      // 0xED14  粉色 — 装饰
+#define UI_RGB565_PINK    0xED14
+
+#define UI_COLOR_COUNT    8      // 颜色总数（最大编号+1）
 
 /*===========================================================================
  * 标题栏配置

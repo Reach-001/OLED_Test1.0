@@ -410,7 +410,7 @@ void astra_draw_list_item()
         /* 刻度线太窄则不画 (文字太长撑满了) */
         if (bar_w >= 20)
         {
-          int16_t line_y = _y_item;  /* 与图标 y 中心对齐 */
+          int16_t line_y = _y_item + 3;  /* 在22px选择器中居中，刻度线上部给图标留空间 */
           int16_t dot;
           if (_sl->value_max > _sl->value_min)
             dot = bar_x + (int16_t)((int32_t)(*_sl->value - _sl->value_min) * (bar_w - 4)

@@ -207,9 +207,9 @@ void astra_refresh_selector_position()
     ? OLED_WIDTH - UI_SELECTOR_FULL_MARGIN
     : oled_get_UTF8_width(astra_selector.selected_item->content) + UI_SELECTOR_TEXT_PADDING;
 
-  /* 高度: 普通18, 滑块向下延伸覆盖刻度线 */
+  /* 高度: 普通18, 滑块扩展4px覆盖刻度线和指示器，上下分布均匀 */
   astra_selector.h_selector_trg = (astra_selector.selected_item->type == slider_item)
-    ? UI_SELECTOR_HEIGHT + 10 : UI_SELECTOR_HEIGHT;
+    ? UI_SELECTOR_HEIGHT + 4 : UI_SELECTOR_HEIGHT;
 
   astra_animation(&astra_selector.y_selector, astra_selector.y_selector_trg, 92);
   astra_animation(&astra_selector.w_selector, astra_selector.w_selector_trg, 92);

@@ -24,11 +24,13 @@ astra_info_bar_t astra_info_bar = {0, 1, 0 - 2 * INFO_BAR_HEIGHT, 0 - 2 * INFO_B
 
 void astra_push_info_bar(char *_content, const uint16_t _span)
 {
-  astra_info_bar.time = get_ticks();
+  /* 同一次 get_ticks() 调用保证 time>=time_start，避免无符号减法下溢导致立即超时 */
+  uint32_t _now = get_ticks();
+  astra_info_bar.time = _now;
   astra_info_bar.content = _content;
   astra_info_bar.span = _span;
   /* 每次调用都重新开始动画，直接覆盖旧状态 */
-  astra_info_bar.time_start = get_ticks();
+  astra_info_bar.time_start = _now;
   astra_info_bar.y_info_bar_trg = INFO_BAR_TARGET_Y;
   astra_info_bar.is_running = true;
 
@@ -45,11 +47,13 @@ astra_pop_up_t astra_pop_up = {0, 1, POP_UP_INIT_Y, POP_UP_INIT_Y, 80, 80, false
 
 void astra_push_pop_up(char *_content, const uint16_t _span)
 {
-  astra_pop_up.time = get_ticks();
+  /* 同一次 get_ticks() 调用保证 time>=time_start，避免无符号减法下溢导致立即超时 */
+  uint32_t _now = get_ticks();
+  astra_pop_up.time = _now;
   astra_pop_up.content = _content;
   astra_pop_up.span = _span;
   /* 每次调用都重新开始动画，直接覆盖旧状态 */
-  astra_pop_up.time_start = get_ticks();
+  astra_pop_up.time_start = _now;
   astra_pop_up.y_pop_up_trg = POP_UP_TARGET_Y;
   astra_pop_up.is_running = true;
 

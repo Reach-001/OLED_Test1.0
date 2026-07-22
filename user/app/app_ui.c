@@ -141,27 +141,30 @@ static void ui_uart_info_loop(void)
     st7789_set_font(astra_default_font);
     char b[32] = {};
 
+    /* 基于屏幕高度垂直居中内容块（约100px高），适配 1.14" 和 1.47" 两种面板 */
+    int16_t _y0 = (OLED_HEIGHT - 100) / 2 + 8;  /* 首行基线 */
+
     /* 标题: UARTx + 开关状态 */
     oled_set_draw_color(UI_COLOR_WHITE);
     snprintf(b, sizeof(b), "UART%d  %s", c, st->enabled ? "ON" : "OFF");
-    oled_draw_UTF8(8, 22, b);
+    oled_draw_UTF8(8, _y0, b);
 
     /* 波特率 + 引脚 */
     oled_set_draw_color(UI_COLOR_GRAY);
     snprintf(b, sizeof(b), "BAUD: %u", st->baud);
-    oled_draw_UTF8(8, 42, b);
+    oled_draw_UTF8(8, _y0 + 20, b);
     snprintf(b, sizeof(b), "TX:%s RX:%s", app_uart_pin_name(st->tx_pin), app_uart_pin_name(st->rx_pin));
-    oled_draw_UTF8(8, 58, b);
+    oled_draw_UTF8(8, _y0 + 36, b);
 
     oled_set_draw_color(UI_COLOR_WHITE);
-    oled_draw_H_line(8, 72, OLED_WIDTH - 16);
+    oled_draw_H_line(8, _y0 + 50, OLED_WIDTH - 16);
 
     /* TX 发送字节数 */
     snprintf(b, sizeof(b), "TX: %u", st->tx_count);
-    oled_draw_UTF8(8, 88, b);
+    oled_draw_UTF8(8, _y0 + 66, b);
     /* RX 接收: 字节数 + 最后收到的字节 */
     snprintf(b, sizeof(b), "RX: %u  LAST:0x%02X", st->rx_count, st->last_rx);
-    oled_draw_UTF8(8, 106, b);
+    oled_draw_UTF8(8, _y0 + 84, b);
 }
 
 /* ---- 测试发送回调 ---- */

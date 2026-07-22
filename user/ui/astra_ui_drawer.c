@@ -50,49 +50,6 @@ static bool astra_list_row_visible(int16_t baseline)
   return row_top > LIST_INFO_BAR_HEIGHT && baseline < SCREEN_HEIGHT;
 }
 
-static void astra_draw_scrollbar_color_overlay(void)
-{
-  int16_t bar_top = LIST_INFO_BAR_HEIGHT;
-  int16_t bar_h = OLED_HEIGHT - bar_top;
-  uint8_t child_num = astra_selector.selected_item->parent->child_num;
-
-  if (bar_h <= 0 || child_num == 0) return;
-
-  float part_len = ceilf((SCREEN_HEIGHT - LIST_INFO_BAR_HEIGHT - 8.0f) /
-                         (float)child_num);
-  int16_t thumb_y = LIST_INFO_BAR_HEIGHT + 4 + astra_selector.selected_index * part_len;
-
-  /* 轨道边框 — 强调色（直写模式，无帧缓冲残留，不需擦黑底） */
-  oled_set_draw_color(UI_SCROLLBAR_ACCENT_COLOR);
-  oled_draw_V_line(OLED_WIDTH - 5, bar_top, bar_h);
-  oled_draw_V_line(OLED_WIDTH - 1, bar_top, bar_h);
-
-  /* 滑块主体 */
-  oled_draw_box(OLED_WIDTH - 4, thumb_y, 3, (int16_t)part_len);
-
-  /* 滑块内横线分隔 */
-  oled_set_draw_color(UI_COLOR_BLACK);
-  oled_draw_H_line(OLED_WIDTH - 4,
-                   LIST_INFO_BAR_HEIGHT - 1 + part_len + (float)astra_selector.selected_index * part_len, 3);
-  if (part_len >= 9)
-  {
-    oled_draw_H_line(OLED_WIDTH - 4,
-                     LIST_INFO_BAR_HEIGHT - 1 + floorf(part_len - 2.0f + (float)astra_selector.selected_index * part_len), 3);
-    oled_draw_H_line(OLED_WIDTH - 4,
-                     LIST_INFO_BAR_HEIGHT - 1 + floorf(part_len + 2.0f + (float)astra_selector.selected_index * part_len), 3);
-  }
-
-  /* 首尾帽子 */
-  oled_set_draw_color(UI_SCROLLBAR_ACCENT_COLOR);
-  oled_draw_box(OLED_WIDTH - 4, LIST_INFO_BAR_HEIGHT, 3, 4);
-  oled_draw_box(OLED_WIDTH - 4, OLED_HEIGHT - 4, 3, 4);
-  oled_set_draw_color(UI_COLOR_BLACK);
-  oled_draw_H_line(OLED_WIDTH - 4, LIST_INFO_BAR_HEIGHT + 2, 3);
-  oled_draw_pixel(OLED_WIDTH - 3, LIST_INFO_BAR_HEIGHT + 1);
-  oled_draw_H_line(OLED_WIDTH - 4, OLED_HEIGHT - 3, 3);
-  oled_draw_pixel(OLED_WIDTH - 3, OLED_HEIGHT - 2);
-}
-
 /*===========================================================================
  * 退场动画 — 沙漏 + 遮罩，适配任意分辨率
  *===========================================================================*/

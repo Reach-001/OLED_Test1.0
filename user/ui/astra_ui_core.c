@@ -121,9 +121,11 @@ void astra_refresh_camera_position()
 {
   if (astra_camera.selector == NULL) return;
 
-  /* 向下超出屏幕: 相机上移 */
-  if (astra_camera.selector->y_selector_trg + 20 + astra_camera.y_camera_trg > SCREEN_HEIGHT)
-    astra_camera.y_camera_trg = SCREEN_HEIGHT - astra_camera.selector->y_selector_trg - 20;
+  /* 向下超出屏幕: 相机上移。
+   * 使用选择器动态高度 + 2px 下边距，避免滑块（28px）底部被裁剪。 */
+  float _sel_bottom_margin = astra_selector.h_selector_trg + 2;
+  if (astra_camera.selector->y_selector_trg + _sel_bottom_margin + astra_camera.y_camera_trg > SCREEN_HEIGHT)
+    astra_camera.y_camera_trg = SCREEN_HEIGHT - astra_camera.selector->y_selector_trg - _sel_bottom_margin;
 
   /* 向上进入标题栏: 相机下移 */
   if (astra_camera.selector->y_selector_trg + astra_camera.y_camera_trg < LIST_INFO_BAR_HEIGHT)
@@ -157,7 +159,8 @@ void astra_init_list()
   astra_selector.selected_index = 0;
   astra_selector.selected_item = astra_get_root_list()->child_list_item[0];
   astra_set_font(astra_default_font);
-  astra_selector.y_selector = astra_selector.selected_item->y_list_item_trg - oled_get_str_height() + 1;
+  /* 选择器顶边 = 基线 - 字体高度，使 16px 文字在 18px 选择器中上下各留 1px 居中 */
+  astra_selector.y_selector = astra_selector.selected_item->y_list_item_trg - oled_get_str_height();
   astra_selector.y_selector_trg = astra_selector.y_selector;
   astra_selector.w_selector = oled_get_UTF8_width(astra_selector.selected_item->content) + UI_SELECTOR_TEXT_PADDING;
   astra_selector.w_selector_trg = astra_selector.w_selector;
@@ -194,9 +197,9 @@ void astra_refresh_selector_position()
 {
   astra_set_font(astra_default_font);
 
-  /* 选择器 Y: 对齐文字顶部 (原始 U8g2 公式) */
+  /* 选择器 Y: 文字 — 16px 文字在 18px 选择器中上下各 1px 居中 */
   astra_selector.y_selector_trg = astra_selector.selected_item->y_list_item_trg
-                                  - oled_get_str_height() + 1;
+                                  - oled_get_str_height();
 
   /* 宽度 */
   astra_selector.w_selector_trg = (astra_selector.selected_item->type == switch_item

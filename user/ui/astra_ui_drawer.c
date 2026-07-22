@@ -295,8 +295,7 @@ void astra_draw_list_appearance()
 
   oled_set_draw_color(UI_TITLE_TEXT_COLOR);
   oled_draw_UTF8(title_x, UI_TITLE_BASELINE_Y, astra_current_title());
-  oled_set_draw_color(UI_TITLE_LINE_COLOR);
-  oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
+  /* 标题线由 astra_draw_color_overlay() 直写层绘制，避免重复 */
 #endif
 }
 

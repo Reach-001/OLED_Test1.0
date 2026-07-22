@@ -304,7 +304,7 @@ void astra_draw_list_appearance()
   oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
 #endif
 
-  /* ---- 右侧滚动条白底 — 帧缓冲画白触发差分，直写层覆彩色 ---- */
+  /* ---- 右侧滚动条 — 帧缓冲：白底+黑滑块触发差分刷新；直写层：彩色覆盖 ---- */
   uint8_t child_num = astra_selector.selected_item->parent->child_num;
   if (child_num > 1)
   {
@@ -315,8 +315,13 @@ void astra_draw_list_appearance()
     extern void astra_animation(float *_pos, float _posTrg, float _speed);
     astra_animation(&g_scrollbar_thumb_y, g_scrollbar_thumb_y_trg, 92);
 
+    /* 整条白底 */
     oled_set_draw_color(UI_LIST_TEXT_COLOR);
     oled_draw_box(OLED_WIDTH - 5, bar_top, 5, OLED_HEIGHT - bar_top);
+    /* 黑滑块 — 移动时触发差分，擦除上帧直写层彩色残留。
+     * 黑像素在 oled_send_buffer() 后立即被 overlay 的彩色覆盖，用户不可见。 */
+    oled_set_draw_color(UI_COLOR_BLACK);
+    oled_draw_box(OLED_WIDTH - 4, (int16_t)g_scrollbar_thumb_y, 3, (int16_t)part_len);
   }
 }
 

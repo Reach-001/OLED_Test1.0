@@ -532,8 +532,9 @@ void astra_draw_selector()
   oled_set_draw_color(UI_LIST_TEXT_COLOR);
   oled_draw_R_box(_xs, _ys, _w, _h, _r);
 
-  /* 棋盘格过渡 8px */
-  for (int16_t px = _w; px < _w + 8; px += 2)
+  /* 棋盘格过渡（颜色/宽度/密度可配置） */
+  oled_set_draw_color(UI_SELECTOR_CHESS_COLOR);
+  for (int16_t px = _w; px < _w + UI_SELECTOR_CHESS_WIDTH; px += UI_SELECTOR_CHESS_STEP)
     for (int16_t py = 0; py < _h; py++)
       if ((px + py) % 2 == 0)
         oled_draw_pixel(_xs + px, _ys + py);

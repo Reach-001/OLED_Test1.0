@@ -71,6 +71,9 @@
 #define UI_SELECTOR_FULL_MARGIN    32               /**< 开关/滑块选择框左右总预留 */
 #define UI_SELECTOR_FRAME_COLOR    UI_COLOR_MINT    /**< 选择框边框颜色 (RGB565直写, 薄荷绿醒目) */
 #define UI_SELECTOR_FILL_ENABLE    1                /**< 选择框棋盘格填充 (1=图案灰底, 0=仅线框) */
+#define UI_SELECTOR_CHESS_COLOR     UI_LIST_TEXT_COLOR /**< 棋盘格颜色 */
+#define UI_SELECTOR_CHESS_WIDTH     8                /**< 棋盘格宽度 (px) */
+#define UI_SELECTOR_CHESS_STEP      2                /**< 棋盘格列步进 (1=密, 2=默认, 3=疏) */
 
 /*===========================================================================
  * 弹出提示框（信息提示 / 确认框）配置

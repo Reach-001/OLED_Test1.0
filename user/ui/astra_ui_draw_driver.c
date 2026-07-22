@@ -68,16 +68,19 @@
 #endif
 
 /*===========================================================================
- * 颜色定义 (RGB565)
+ * 颜色表 — 由 app_ui_style_config.h 的 UI_COLOR_LIST 自动生成
  *===========================================================================*/
 
-#define COLOR_BLACK   UI_RGB565_BLACK
-#define COLOR_WHITE   UI_RGB565_WHITE
-#define COLOR_GRAY    UI_RGB565_GRAY
-#define COLOR_SKY     UI_RGB565_SKY
-#define COLOR_MINT    UI_RGB565_MINT
-#define COLOR_AMBER   UI_RGB565_AMBER
-#define COLOR_ROSE    UI_RGB565_ROSE
+#define X(idx, rgb, name) [idx] = rgb,
+static const uint16_t g_rgb565_table[] = { UI_COLOR_LIST };
+#undef X
+
+/** @brief 根据颜色编号获取 RGB565 色值 */
+static inline uint16_t color_rgb(uint8_t idx)
+{
+    if (idx < UI_COLOR_COUNT) return g_rgb565_table[idx];
+    return g_rgb565_table[UI_COLOR_WHITE];
+}
 
 /*===========================================================================
  * MADCTL 值 — 厂家驱动已验证
@@ -107,8 +110,8 @@
  * 内部状态变量
  *===========================================================================*/
 
-static uint16_t g_fg_color   = COLOR_WHITE;   /**< 当前前景色（RGB565） */
-static uint16_t g_bg_color   = COLOR_BLACK;   /**< 当前背景色（RGB565） */
+static uint16_t g_fg_color   = 0xFFFF;   /**< 当前前景色 (RGB565 白) — 直写模式使用 */
+static uint16_t g_bg_color   = 0x0000;   /**< 当前背景色 (RGB565 黑) */
 static uint8_t  g_draw_color = 1;             /**< 绘制颜色编号（0~6，对应预定义颜色） */
 static uint8_t  g_font_mode  = 1;             /**< 字体模式：0=不透明背景，1=透明背景 */
 static uint8_t  g_font_dir   = 0;             /**< 字体方向（保留） */
@@ -511,7 +514,7 @@ void astra_ui_driver_init(void)
 
     /* 清屏为黑色 */
     st7789_set_window(0, 0, OLED_WIDTH - 1, OLED_HEIGHT - 1);
-    st7789_fill_pixels(COLOR_BLACK, (uint32_t)OLED_WIDTH * OLED_HEIGHT);
+    st7789_fill_pixels(color_rgb(UI_COLOR_BLACK), (uint32_t)OLED_WIDTH * OLED_HEIGHT);
 
     /* 设置默认字体和模式 */
     st7789_set_font(astra_default_font);
@@ -524,7 +527,7 @@ void astra_ui_driver_init(void)
 
 /**
  * @brief 设置当前绘图颜色（通过预定义编号）
- * @param color 颜色编号（0~6），对应 UI_COLOR_xxx 宏
+ * @param color 颜色编号（0~UI_COLOR_COUNT-1），对应 UI_COLOR_xxx 枚举
  */
 uint8_t st7789_get_draw_color(void)
 {
@@ -534,17 +537,8 @@ uint8_t st7789_get_draw_color(void)
 void st7789_set_draw_color(uint8_t color)
 {
     g_draw_color = color;
-    switch (color)
-    {
-        case 0:  g_fg_color = COLOR_BLACK; g_bg_color = COLOR_WHITE; break;
-        case 1:  g_fg_color = COLOR_WHITE; g_bg_color = COLOR_BLACK; break;
-        case 2:  g_fg_color = COLOR_GRAY;  g_bg_color = COLOR_BLACK; break;
-        case 3:  g_fg_color = COLOR_SKY;   g_bg_color = COLOR_BLACK; break;
-        case 4:  g_fg_color = COLOR_MINT;  g_bg_color = COLOR_BLACK; break;
-        case 5:  g_fg_color = COLOR_AMBER; g_bg_color = COLOR_BLACK; break;
-        case 6:  g_fg_color = COLOR_ROSE;  g_bg_color = COLOR_BLACK; break;
-        default: g_fg_color = COLOR_WHITE; g_bg_color = COLOR_BLACK; break;
-    }
+    g_fg_color = color_rgb(color);
+    g_bg_color = (color == UI_COLOR_BLACK) ? color_rgb(UI_COLOR_WHITE) : color_rgb(UI_COLOR_BLACK);
 }
 
 void st7789_set_font_mode(uint8_t mode)  { g_font_mode = mode; }   /**< 设置字体模式（0=不透明，1=透明） */
@@ -581,7 +575,7 @@ void st7789_clear_screen(void)
     }
 
     st7789_set_window(0, 0, OLED_WIDTH - 1, OLED_HEIGHT - 1);
-    st7789_fill_pixels(COLOR_BLACK, (uint32_t)OLED_WIDTH * OLED_HEIGHT);
+    st7789_fill_pixels(color_rgb(UI_COLOR_BLACK), (uint32_t)OLED_WIDTH * OLED_HEIGHT);
 }
 
 /**
@@ -594,7 +588,8 @@ void st7789_send_buffer(void)
     {
         /* 首次刷新：全屏发送 */
         st7789_blit_mono(0, 0, OLED_WIDTH, OLED_HEIGHT,
-                         g_framebuffer, ST7789_FB_STRIDE, COLOR_WHITE, COLOR_BLACK);
+                         g_framebuffer, ST7789_FB_STRIDE,
+                         color_rgb(UI_COLOR_WHITE), color_rgb(UI_COLOR_BLACK));
         memcpy(g_last_framebuffer, g_framebuffer, sizeof(g_framebuffer));
         g_last_framebuffer_valid = true;
         return;
@@ -638,7 +633,7 @@ void st7789_send_buffer(void)
     }
 
     st7789_blit_mono(x, min_y, w, h,
-                     g_framebuffer, ST7789_FB_STRIDE, COLOR_WHITE, COLOR_BLACK);
+                     g_framebuffer, ST7789_FB_STRIDE, color_rgb(UI_COLOR_WHITE), color_rgb(UI_COLOR_BLACK));
     memcpy(g_last_framebuffer, g_framebuffer, sizeof(g_framebuffer));
 }
 
@@ -657,7 +652,7 @@ void st7789_send_area_buffer(int16_t x, int16_t y, int16_t w, int16_t h)
 
     st7789_blit_mono((uint16_t)x, (uint16_t)y,
                      (uint16_t)(x1 - x + 1), (uint16_t)(y1 - y + 1),
-                     g_framebuffer, ST7789_FB_STRIDE, COLOR_WHITE, COLOR_BLACK);
+                     g_framebuffer, ST7789_FB_STRIDE, color_rgb(UI_COLOR_WHITE), color_rgb(UI_COLOR_BLACK));
 }
 
 /*===========================================================================

@@ -13,28 +13,34 @@
 #define _APP_UI_STYLE_CONFIG_H_
 
 /*===========================================================================
- * 基本颜色编号（与绘制驱动保持一致）
+ * 颜色系统 — 添加新颜色只需在 UI_COLOR_LIST 末尾加一行 X(编号,RGB565值,英文名)
+ *   界面代码中使用 UI_COLOR_英文名 (如 UI_COLOR_RED) 引用颜色编号
+ *   驱动层自动查表获取 RGB565 色值
  *=========================================================================*/
 
-#define UI_COLOR_BLACK             0   /**< 黑色（背景/暗色） */
-#define UI_COLOR_WHITE             1   /**< 白色（前景/高亮） */
-#define UI_COLOR_GRAY              2   /**< 灰色（中性） */
-#define UI_COLOR_SKY               3   /**< 天蓝色（醒目/信息） */
-#define UI_COLOR_MINT              4   /**< 薄荷绿（清新/确认） */
-#define UI_COLOR_AMBER             5   /**< 琥珀色（警告/滑块） */
-#define UI_COLOR_ROSE              6   /**< 玫瑰红（强调/按钮） */
+/* X(编号, RGB565, 英文名) — 一元一色，编号必须连续递增 */
+#define UI_COLOR_LIST \
+  X(0, 0x0000, BLACK) \
+  X(1, 0xFFFF, WHITE) \
+  X(2, 0x8410, GRAY)  \
+  X(3, 0x06FF, SKY)   \
+  X(4, 0x07F0, MINT)  \
+  X(5, 0xFDE0, AMBER) \
+  X(6, 0xF81F, ROSE)
 
-/*===========================================================================
- * RGB565 实际颜色值
- *=========================================================================*/
+/* 自动生成 UI_COLOR_BLACK=0, UI_COLOR_WHITE=1, ... 枚举 */
+#define X(idx, rgb, name) UI_COLOR_##name = idx,
+typedef enum { UI_COLOR_LIST UI_COLOR_COUNT } ui_color_t;
+#undef X
 
-#define UI_RGB565_BLACK            0x0000  /**< 背景黑 */
-#define UI_RGB565_WHITE            0xFFFF  /**< 高亮白 */
-#define UI_RGB565_GRAY             0x8410  /**< 中性灰 */
-#define UI_RGB565_SKY              0x06FF  /**< 高饱和蓝青 */
-#define UI_RGB565_MINT             0x07F0  /**< 高饱和薄荷绿 */
-#define UI_RGB565_AMBER            0xFDE0  /**< 明亮琥珀黄 */
-#define UI_RGB565_ROSE             0xF81F  /**< 高饱和玫瑰红 */
+/* 兼容旧 UI_RGB565_xxx 宏 — 新增颜色优先用 UI_COLOR_LIST，此处保留旧引用 */
+#define UI_RGB565_BLACK  0x0000
+#define UI_RGB565_WHITE  0xFFFF
+#define UI_RGB565_GRAY   0x8410
+#define UI_RGB565_SKY    0x06FF
+#define UI_RGB565_MINT   0x07F0
+#define UI_RGB565_AMBER  0xFDE0
+#define UI_RGB565_ROSE   0xF81F
 
 /*===========================================================================
  * 标题栏配置
@@ -71,6 +77,8 @@
 #define UI_SELECTOR_FULL_MARGIN    32               /**< 开关/滑块选择框左右总预留 */
 #define UI_SELECTOR_FRAME_COLOR    UI_COLOR_MINT    /**< 选择框边框颜色 (RGB565直写, 薄荷绿醒目) */
 #define UI_SELECTOR_FILL_ENABLE    1                /**< 选择框棋盘格填充 (1=图案灰底, 0=仅线框) */
+
+//选中框右侧棋盘设置
 #define UI_SELECTOR_CHESS_COLOR     UI_LIST_TEXT_COLOR /**< 棋盘格颜色 */
 #define UI_SELECTOR_CHESS_WIDTH     8                /**< 棋盘格宽度 (px) */
 #define UI_SELECTOR_CHESS_STEP      2                /**< 棋盘格列步进 (1=密, 2=默认, 3=疏) */

@@ -18,8 +18,8 @@
 extern const st7789_font_t font_8x16;  /* ASCII 8x16 字体, draw_str 需要切字体 */
 
 /* 滚动条动画状态 — 帧缓冲和直写层共用，避免两处各维护一份 static */
-static float g_scrollbar_thumb_y     = 0;
-static float g_scrollbar_thumb_y_trg = 0;
+static float g_scrollbar_thumb_y     = LIST_INFO_BAR_HEIGHT + 4;     /**< 初始化对齐 bar_top，避免首帧从屏顶跳入 */
+static float g_scrollbar_thumb_y_trg = LIST_INFO_BAR_HEIGHT + 4;
 
 /* 彩色点缀使用 ST7789 直写，主体 UI 仍走 1-bit 帧缓冲。 */
 static void astra_draw_overlay_rframe(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r, uint8_t color)
@@ -315,14 +315,20 @@ void astra_draw_list_appearance()
     extern void astra_animation(float *_pos, float _posTrg, float _speed);
     astra_animation(&g_scrollbar_thumb_y, g_scrollbar_thumb_y_trg, 92);
 
-    /* 白底 (1) + 黑滑块 (0)：滑块移动时新旧位分别触发 0↔1 差分，
-     * oled_send_buffer 覆写旧 overlay 彩素。轨道线在同一字节内会
-     * 被短暂擦除，但 SPI 刷一行 <1μs，50Hz 下肉眼不可见。
-     * 直写层随后覆盖彩色，最终显示正确。 */
+    /* 帧缓冲中画出与直写层 1:1 对应的形状，差分引擎自然追踪：
+     *   轨道线(白) + 滑块(黑移动) → 新旧位 0↔1 触发刷新
+     *   直写层覆上彩色，帧缓冲层面形状一致无额外白底 */
+    /* 两条轨道线 (1px 白) */
     oled_set_draw_color(UI_LIST_TEXT_COLOR);
-    oled_draw_box(OLED_WIDTH - 5, bar_top, 5, OLED_HEIGHT - bar_top);
+    oled_draw_V_line(OLED_WIDTH - 5, bar_top, OLED_HEIGHT - bar_top);
+    oled_draw_V_line(OLED_WIDTH - 1, bar_top, OLED_HEIGHT - bar_top);
+    /* 滑块黑块触发差分 */
     oled_set_draw_color(UI_COLOR_BLACK);
     oled_draw_box(OLED_WIDTH - 4, (int16_t)g_scrollbar_thumb_y, 3, (int16_t)part_len);
+    /* 首尾帽白块 (覆盖直写层首尾帽位置) */
+    oled_set_draw_color(UI_LIST_TEXT_COLOR);
+    oled_draw_box(OLED_WIDTH - 4, bar_top, 3, 4);
+    oled_draw_box(OLED_WIDTH - 4, OLED_HEIGHT - 4, 3, 4);
   }
 }
 

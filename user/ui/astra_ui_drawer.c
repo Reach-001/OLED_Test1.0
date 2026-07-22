@@ -548,21 +548,14 @@ void astra_draw_color_overlay()
 
   st7789_set_buffer_mode(0);
 
-  /* 沙漏动画期间: 擦除标题线上次直写的彩色像素 */
+  /* 沙漏动画期间：跳过 overlay 绘制 */
   if (!astra_exit_animation_finished)
   {
-#if UI_TITLE_ENABLE
-    oled_set_draw_color(UI_COLOR_BLACK);
-    oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
-#endif
     st7789_set_buffer_mode(1);
     return;
   }
 
-#if UI_TITLE_ENABLE
-  oled_set_draw_color(UI_TITLE_LINE_COLOR);
-  oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
-#endif
+  /* 标题线已在帧缓冲画白线，不在此重复绘制（避免白→彩闪烁） */
 
   /* 信息栏/弹窗的彩色强调边框 */
   if (astra_info_bar.is_running)

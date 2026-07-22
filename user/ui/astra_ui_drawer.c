@@ -300,6 +300,32 @@ void astra_draw_list_appearance()
   oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
 #endif
 
+  /* 帧缓冲中画白轨+黑滑块→位置变化驱动差分刷新，overlay 只上色 */
+  {
+    uint8_t sb_n = astra_selector.selected_item->parent->child_num;
+    if (sb_n > 1)
+    {
+      int16_t sb_top = LIST_INFO_BAR_HEIGHT + 2;
+      int16_t sb_h   = OLED_HEIGHT - sb_top;
+      int16_t sb_x   = OLED_WIDTH - UI_SCROLLBAR_X_OFFSET - UI_SCROLLBAR_WIDTH;
+      int16_t sb_mid = sb_x + UI_SCROLLBAR_WIDTH / 2;
+
+      /* 白竖线 */
+      oled_set_draw_color(UI_LIST_TEXT_COLOR);
+      oled_draw_V_line(sb_mid, sb_top, sb_h);
+
+      /* 黑滑块 — 位置=选择器，动画驱动差异保证差分必刷 */
+      int16_t thumb_y  = (int16_t)(astra_selector.y_selector + astra_camera.y_camera);
+      int16_t thumb_h  = (int16_t)astra_selector.h_selector;
+      if (thumb_y < sb_top) { thumb_h -= (sb_top - thumb_y); thumb_y = sb_top; }
+      if (thumb_y + thumb_h > OLED_HEIGHT) thumb_h = OLED_HEIGHT - thumb_y;
+      if (thumb_h > 0)
+      {
+        oled_set_draw_color(UI_COLOR_BLACK);
+        oled_draw_box(sb_x, thumb_y, UI_SCROLLBAR_WIDTH, thumb_h);
+      }
+    }
+  }
 }
 
 /*===========================================================================
@@ -553,7 +579,7 @@ void astra_draw_color_overlay()
                               UI_POPUP_ACCENT_COLOR);
   }
 
-  /* ---- 指示器：1px 竖线 + 同高滑块，与选择框水平位置对齐 ---- */
+  /* ---- 指示器：帧缓冲已画白轨+黑滑块差分刷新，overlay 只上色 ---- */
   {
     uint8_t sb_n = astra_selector.selected_item->parent->child_num;
     if (sb_n > 1)
@@ -562,18 +588,12 @@ void astra_draw_color_overlay()
       int16_t sb_h   = OLED_HEIGHT - sb_top;
       int16_t sb_x   = OLED_WIDTH - UI_SCROLLBAR_X_OFFSET - UI_SCROLLBAR_WIDTH;
       int16_t sb_mid = sb_x + UI_SCROLLBAR_WIDTH / 2;
-      int16_t tb_x   = sb_x;
-      int16_t tb_w   = UI_SCROLLBAR_WIDTH;
 
-      /* 黑擦整列 */
-      oled_set_draw_color(UI_COLOR_BLACK);
-      oled_draw_box(tb_x, sb_top, tb_w, sb_h);
-
-      /* 灰轨线 */
+      /* 灰轨线 — 覆盖帧缓冲白线 */
       oled_set_draw_color(UI_SCROLLBAR_COLOR);
       oled_draw_V_line(sb_mid, sb_top, sb_h);
 
-      /* 滑块 — 高=选择框，y=选择器同步 */
+      /* 色块滑块 — 覆盖帧缓冲黑块，位置与帧缓冲已同步 */
       int16_t thumb_y = (int16_t)(astra_selector.y_selector + astra_camera.y_camera);
       int16_t thumb_h = (int16_t)astra_selector.h_selector;
       if (thumb_y < sb_top) { thumb_h -= (sb_top - thumb_y); thumb_y = sb_top; }
@@ -581,7 +601,7 @@ void astra_draw_color_overlay()
       if (thumb_h > 0)
       {
         oled_set_draw_color(UI_SCROLLBAR_THUMB_COLOR);
-        oled_draw_box(tb_x, thumb_y, tb_w, thumb_h);
+        oled_draw_box(sb_x, thumb_y, UI_SCROLLBAR_WIDTH, thumb_h);
       }
     }
   }

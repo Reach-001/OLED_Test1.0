@@ -304,6 +304,23 @@ void astra_draw_list_appearance()
   oled_set_draw_color(UI_LIST_TEXT_COLOR);
   oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
 #endif
+
+  /* 滚动条白底 — 帧缓冲始终画白 + 1px 交替取反，保证区域每帧差分刷新 */
+  if (astra_selector.selected_item->parent->child_num > 1)
+  {
+    static uint8_t _sb_toggle = 0;
+    _sb_toggle ^= 1;
+    int16_t sb_x   = OLED_WIDTH - UI_SCROLLBAR_X_OFFSET - UI_SCROLLBAR_WIDTH;
+    int16_t sb_top = LIST_INFO_BAR_HEIGHT;
+    int16_t sb_h   = OLED_HEIGHT - sb_top;
+
+    oled_set_draw_color(UI_LIST_TEXT_COLOR);
+    oled_draw_box(sb_x, sb_top, UI_SCROLLBAR_WIDTH, sb_h);
+
+    /* 1px 取反触发差分 — overlay 会覆上彩色，对用户不可见 */
+    oled_set_draw_color(_sb_toggle ? UI_COLOR_BLACK : UI_LIST_TEXT_COLOR);
+    oled_draw_pixel(sb_x + UI_SCROLLBAR_WIDTH - 1, OLED_HEIGHT - 1);
+  }
 }
 
 /*===========================================================================
@@ -539,42 +556,35 @@ void astra_draw_color_overlay()
   oled_draw_H_line(0, LIST_INFO_BAR_HEIGHT - 1, OLED_WIDTH);
 #endif
 
-  /* ---- 右侧滚动条 — overlay 独享，先擦旧再画新 ---- */
+  /* ---- 右侧滚动条 — 帧缓冲白底保证刷新，overlay 只画轨+滑 ---- */
   {
     uint8_t child_num = astra_selector.selected_item->parent->child_num;
 
     if (child_num > 1)
     {
-      int16_t bar_top = LIST_INFO_BAR_HEIGHT + 2;  /* 与绿线留 2px 间隙 */
-      int16_t bar_h   = OLED_HEIGHT - bar_top;
-      int16_t bar_x   = OLED_WIDTH - UI_SCROLLBAR_X_OFFSET - UI_SCROLLBAR_WIDTH;
-      int16_t trk_x   = bar_x + UI_SCROLLBAR_WIDTH / 2;
+      int16_t sb_top = LIST_INFO_BAR_HEIGHT + 2;  /* 与绿线 2px */
+      int16_t sb_h   = OLED_HEIGHT - sb_top;
+      int16_t sb_x   = OLED_WIDTH - UI_SCROLLBAR_X_OFFSET - UI_SCROLLBAR_WIDTH;
+      int16_t trk_x  = sb_x + UI_SCROLLBAR_WIDTH / 2;
 
-      /* 子项数变化 → 重置 thumb 到顶部 */
       if (g_scrollbar_child_num != child_num)
       {
         g_scrollbar_child_num = child_num;
-        g_scrollbar_thumb_y   = bar_top;
-        g_scrollbar_thumb_y_trg = bar_top;
+        g_scrollbar_thumb_y   = sb_top;
+        g_scrollbar_thumb_y_trg = sb_top;
       }
 
-      /* 动画驱动 */
-      float part_len = (float)bar_h / (float)child_num;
-      g_scrollbar_thumb_y_trg = bar_top + astra_selector.selected_index * part_len;
+      float part_len = (float)sb_h / (float)child_num;
+      g_scrollbar_thumb_y_trg = sb_top + astra_selector.selected_index * part_len;
       extern void astra_animation(float *_pos, float _posTrg, float _speed);
       astra_animation(&g_scrollbar_thumb_y, g_scrollbar_thumb_y_trg, 92);
 
-      /* 擦旧：黑底覆盖滚动条整列，清掉上帧残影 */
-      oled_set_draw_color(UI_COLOR_BLACK);
-      oled_draw_box(bar_x, bar_top, UI_SCROLLBAR_WIDTH, bar_h);
-
-      /* 轨道 — 1px 灰色细线 */
+      /* 帧缓冲白底已擦旧，只画轨+滑 */
       oled_set_draw_color(UI_SCROLLBAR_COLOR);
-      oled_draw_V_line(trk_x, bar_top, bar_h);
+      oled_draw_V_line(trk_x, sb_top, sb_h);
 
-      /* 滑块 — 天蓝色块 */
       oled_set_draw_color(UI_SCROLLBAR_THUMB_COLOR);
-      oled_draw_box(bar_x, (int16_t)g_scrollbar_thumb_y, UI_SCROLLBAR_WIDTH, (int16_t)part_len);
+      oled_draw_box(sb_x, (int16_t)g_scrollbar_thumb_y, UI_SCROLLBAR_WIDTH, (int16_t)part_len);
     }
   }
 

@@ -109,6 +109,15 @@
 #define WIRELESS_UART_RX        UART1_RX_B5
 
 /*===========================================================================
+ * BNO085 IMU 配置 - 软件 IIC
+ *===========================================================================*/
+#define BNO085_SOFT_IIC_DELAY   100                 /* 软件 IIC 延时，数值越小通信越快；
+                                                     * 80MHz 下 50 可能被优化到 <1us 导致时序异常，
+                                                     * 建议 100~200，约合 100kHz 标准 I2C 速率 */
+#define BNO085_SCL_PIN          B17                 /* BNO085 SCL */
+#define BNO085_SDA_PIN          B18                 /* BNO085 SDA */
+
+/*===========================================================================
  * OLED/LCD 显示屏配置 (可选)
  *===========================================================================*/
 #define LCD_SPI_INDEX           SPI_1
@@ -139,6 +148,7 @@
 #define TASK_UI_PERIOD          20                  /* UI 动画刷新: 20ms (50Hz) */
 #define TASK_KEY_PERIOD         10                  /* 按键扫描: 10ms */
 #define TASK_UART_PERIOD        5                   /* UART 轮询: 5ms */
+#define TASK_IMU_PERIOD         10                  /* BNO085 轮询: 10ms */
 /* 新增任务时，在这里添加 TASK_xxx_PERIOD，再到 app_task.h/c 和 main.c 接入。 */
 #define TASK_TICK_MAX           10000               /* 调度计数器回绕阈值 */
 

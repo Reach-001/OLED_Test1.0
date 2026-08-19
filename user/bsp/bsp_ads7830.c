@@ -10,12 +10,9 @@ static uint8 ads7830_validate_channel(uint8 channel)
 
 static ads7830_channel_command_enum ads7830_single_command(uint8 channel)
 {
-    if ((channel & 0x01U) == 0U)
-    {
-        return (ads7830_channel_command_enum)(ADS7830_SINGLE_CH0 + (channel >> 1U));
-    }
-
-    return (ads7830_channel_command_enum)(ADS7830_SINGLE_CH1 + ((channel - 1U) >> 1U));
+    /* ADS7830 单端通道编码为 0x08~0x0F 顺序排列（bit7=SD=1，bit6:4=通道号），
+     * 因此直接由通道号偏移得到，无需做奇偶重排。 */
+    return (ads7830_channel_command_enum)(ADS7830_SINGLE_CH0 + channel);
 }
 
 static ads7830_channel_command_enum ads7830_differential_command(uint8 positive_channel)

@@ -14,6 +14,7 @@
 #include "bsp_key.h"
 #include "bsp_motor.h"
 #include "bsp_encoder.h"
+#include "bsp_ads7830.h"
 #include "bsp_track.h"
 
 /*==================== APP 层 ====================*/

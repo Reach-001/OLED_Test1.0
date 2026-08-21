@@ -5,6 +5,12 @@
 
 #include "bsp_track.h"
 
+#if TRACK_USE_ADS7830
+#include "bsp_ads7830.h"
+
+static soft_iic_info_struct s_ads7830_bus;
+static uint8 s_ads7830_ready = 0;
+#else
 /* 传感器引脚数组 */
 static const adc_pin_enum track_pins[TRACK_SENSOR_NUM] = {
 #if TRACK_SENSOR_NUM >= 1
@@ -32,23 +38,37 @@ static const adc_pin_enum track_pins[TRACK_SENSOR_NUM] = {
     TRACK_SENSOR_8,
 #endif
 };
+#endif
 
 /* 权重数组改为 int16，防止 TRACK_WEIGHT_LIST 超出 ±127 时静默截断
  * BUG FIX: 原为 int8，若权值超出 ±127 会在数组初始化时无声截断 */
 static const int16 track_weights[TRACK_SENSOR_NUM] = TRACK_WEIGHT_LIST;
 
 /* 当前阈值 */
+#if TRACK_USE_ADS7830
+static uint16 s_threshold = TRACK_ADS7830_THRESHOLD;
+#else
 static uint16 s_threshold = TRACK_THRESHOLD;
+#endif
 
 /*-----------------------------------------------------------
  * 循迹传感器初始化
  *-----------------------------------------------------------*/
 void track_init(void)
 {
+#if TRACK_USE_ADS7830
+    ads7830_init(&s_ads7830_bus,
+                 ADS7830_I2C_ADDR,
+                 ADS7830_SOFT_IIC_DELAY,
+                 ADS7830_SCL_PIN,
+                 ADS7830_SDA_PIN);
+    s_ads7830_ready = (ads7830_is_ready(&s_ads7830_bus) == ADS7830_STATUS_OK) ? 1 : 0;
+#else
     for (uint8 i = 0; i < TRACK_SENSOR_NUM; i++)
     {
         adc_init(track_pins[i], TRACK_ADC_RESOLUTION);
     }
+#endif
 }
 
 /*-----------------------------------------------------------
@@ -56,10 +76,33 @@ void track_init(void)
  *-----------------------------------------------------------*/
 void track_read_raw(track_data_t *data)
 {
+#if TRACK_USE_ADS7830
+    for (uint8 i = 0; i < TRACK_SENSOR_NUM; i++)
+    {
+        uint32 sum = 0;
+        uint8 valid_count = 0;
+
+        for (uint8 sample = 0; sample < TRACK_ADC_FILTER_COUNT; sample++)
+        {
+            uint8 value = 0;
+
+            if ((s_ads7830_ready != 0U) &&
+                (ads7830_read_single_default(&s_ads7830_bus, i, &value) == ADS7830_STATUS_OK))
+            {
+                sum += value;
+                valid_count++;
+            }
+        }
+
+        /* ADS7830 只有 8 位输出。通信失败时置 0，避免沿用上一帧误导控制层。 */
+        data->raw[i] = (valid_count > 0U) ? (uint16)(sum / valid_count) : 0U;
+    }
+#else
     for (uint8 i = 0; i < TRACK_SENSOR_NUM; i++)
     {
         data->raw[i] = adc_mean_filter_convert(track_pins[i], TRACK_ADC_FILTER_COUNT);
     }
+#endif
 }
 
 /*-----------------------------------------------------------

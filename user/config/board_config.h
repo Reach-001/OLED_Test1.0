@@ -99,6 +99,15 @@
 #define TRACK_LOST_MAX_COUNT    50                  /* 连续丢线保护次数，50 * 10ms = 500ms */
 #define TRACK_WEIGHT_LIST       {-100, -50, 0, 50, 100}
 
+/* ADS7830 扩展 ADC。默认关闭，启用前按实际接线修改 SCL/SDA。
+ * 启用后 TRACK_SENSOR_NUM 路传感器依次读取 ADS7830 CH0~CH(N-1)，阈值范围变为 0~255。
+ */
+#define TRACK_USE_ADS7830       0
+#define ADS7830_SCL_PIN         B17
+#define ADS7830_SDA_PIN         B18
+#define ADS7830_SOFT_IIC_DELAY  80
+#define TRACK_ADS7830_THRESHOLD 128
+
 /*===========================================================================
  * 串口通信配置
  *===========================================================================*/

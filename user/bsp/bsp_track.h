@@ -24,6 +24,12 @@ typedef struct
 void track_init(void);
 
 /**
+ * @brief   获取 ADS7830 通信状态
+ * @return  uint8   1=初始化时 IIC 应答正常, 0=未应答
+ */
+uint8 track_is_ready(void);
+
+/**
  * @brief   读取所有传感器原始值
  * @param   data    数据结构指针
  */

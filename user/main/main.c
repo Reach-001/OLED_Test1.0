@@ -91,6 +91,7 @@ static void self_test(void)
     /* 自检只打印实际配置的传感器数量，避免修改 TRACK_SENSOR_NUM 后越界。 */
     track_data_t track;
     track_read(&track);
+    printf("[TEST] ADS7830 IIC: %s\r\n", track_is_ready() ? "OK" : "FAIL");
     printf("[TEST] Track:");
     for (uint8 i = 0; i < TRACK_SENSOR_NUM; i++)
     {

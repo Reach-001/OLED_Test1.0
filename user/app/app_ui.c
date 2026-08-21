@@ -300,6 +300,11 @@ static void ui_imu_exit(void)
 
 /* 循迹数据通过 task_get_track_data() 获取，无需 extern */
 
+static uint16_t ui_track_adc_max(void)
+{
+    return 255U;
+}
+
 static void ui_track_init(void)
 {
     /* 进入页面时无需特殊操作 */
@@ -309,59 +314,96 @@ static void ui_track_loop(void)
 {
     const track_data_t *td = task_get_track_data();
     track_data_t *td_mut = (track_data_t *)td;  /* 仅用于兼容非 const API */
+    uint16_t adc_max = ui_track_adc_max();
+    uint16_t threshold = track_get_threshold();
+    char digital_text[TRACK_SENSOR_NUM + 1] = {};
 
     st7789_set_font(astra_default_font);
 
     oled_set_draw_color(UI_COLOR_WHITE);
-    oled_draw_UTF8(8, 20, "Track Sensors");
+    oled_draw_UTF8(8, 18, "Track ADC");
 
-    /* ---- 绘制 5 路传感器柱状图 ---- */
+    oled_set_draw_color(UI_COLOR_GRAY);
+    char _range[24] = {};
+    snprintf(_range, sizeof(_range), "MAX:%u TH:%u",
+             (unsigned int)adc_max,
+             (unsigned int)threshold);
+    oled_draw_str(120, 18, _range);
+
+    /* ---- 原始 ADC 柱状图 ---- */
     uint16_t bar_area_w = OLED_WIDTH - 16;
     uint16_t bar_w      = bar_area_w / TRACK_SENSOR_NUM - 4;
-    uint16_t bar_max_h  = 50;
-    uint16_t bar_top_y  = 30;
+    uint16_t bar_max_h  = 54;
+    uint16_t bar_top_y  = 32;
     uint16_t label_y    = bar_top_y + bar_max_h + 8;
+    uint16_t th_h       = (uint16_t)((uint32_t)threshold * bar_max_h / adc_max);
+
+    if (th_h > bar_max_h)
+    {
+        th_h = bar_max_h;
+    }
 
     for (uint8 i = 0; i < TRACK_SENSOR_NUM; i++)
     {
         uint16_t bx = 8 + i * (bar_w + 4);
+        uint16_t raw = td->raw[i];
+        uint16_t raw_h;
+        char _val[6] = {};
 
-        if (td->digital[i])
+        if (raw > adc_max)
         {
-            oled_set_draw_color(UI_COLOR_WHITE);
-            oled_draw_box(bx, bar_top_y, bar_w, bar_max_h);
+            raw = adc_max;
         }
-        else
+
+        raw_h = (uint16_t)((uint32_t)raw * bar_max_h / adc_max);
+        if ((raw > 0U) && (raw_h == 0U))
         {
-            uint16_t raw_h = (uint16_t)((uint32_t)td->raw[i] * bar_max_h / 4095);
-            if (raw_h > bar_max_h) raw_h = bar_max_h;
-            if (raw_h > 0)
-            {
-                oled_set_draw_color(UI_COLOR_GRAY);
-                oled_draw_box(bx, bar_top_y + bar_max_h - raw_h, bar_w, raw_h);
-            }
-            oled_set_draw_color(UI_COLOR_WHITE);
-            oled_draw_frame(bx, bar_top_y, bar_w, bar_max_h);
+            raw_h = 1U;
+        }
+
+        oled_set_draw_color(UI_COLOR_WHITE);
+        oled_draw_frame(bx, bar_top_y, bar_w, bar_max_h);
+
+        if (raw_h > 0U)
+        {
+            oled_set_draw_color(td->digital[i] ? UI_COLOR_MINT : UI_COLOR_SKY);
+            oled_draw_box(bx + 1,
+                          bar_top_y + bar_max_h - raw_h,
+                          bar_w - 2,
+                          raw_h);
+        }
+
+        /* 阈值线按当前 ADC 量程映射到柱状图，便于直接判断黑白分界。 */
+        if ((th_h > 0U) && (th_h < bar_max_h))
+        {
+            oled_set_draw_color(UI_COLOR_AMBER);
+            oled_draw_H_line(bx, bar_top_y + bar_max_h - th_h, bar_w);
         }
 
         oled_set_draw_color(UI_COLOR_GRAY);
         char _lbl[4] = {};
         snprintf(_lbl, sizeof(_lbl), "S%d", i + 1);
         int16_t lw = oled_get_str_width(_lbl);
-        oled_draw_str(bx + (bar_w - lw) / 2, label_y + 13, _lbl);
+        oled_draw_str(bx + (bar_w - lw) / 2, label_y + 8, _lbl);
 
-        oled_set_draw_color(td->digital[i] ? UI_COLOR_MINT : UI_COLOR_GRAY);
-        oled_draw_str(bx + (bar_w - 8) / 2, label_y + 29,
-                       td->digital[i] ? "1" : "0");
+        snprintf(_val, sizeof(_val), "%u", (unsigned int)td->raw[i]);
+        oled_set_draw_color(td->digital[i] ? UI_COLOR_MINT : UI_COLOR_WHITE);
+        lw = oled_get_str_width(_val);
+        oled_draw_str(bx + (bar_w - lw) / 2, label_y + 24, _val);
     }
 
     /* ---- 底部状态 ---- */
+    for (uint8 i = 0; i < TRACK_SENSOR_NUM; i++)
+    {
+        digital_text[i] = td->digital[i] ? '1' : '0';
+    }
+
     oled_set_draw_color(UI_COLOR_WHITE);
     char _st[40] = {};
-    snprintf(_st, sizeof(_st), "LOST:%d X:%d TH:%d",
+    snprintf(_st, sizeof(_st), "D:%s L:%d X:%d",
+             digital_text,
              track_is_lost(td_mut),
-             track_is_cross(td_mut),
-             track_get_threshold());
+             track_is_cross(td_mut));
     oled_draw_UTF8(8, OLED_HEIGHT - 6, _st);
 }
 

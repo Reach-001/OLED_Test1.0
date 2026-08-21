@@ -8,7 +8,7 @@
  * 读数流程固定为：写控制字 -> 重复 START -> 读 1 字节转换结果。
  */
 
-#define ADS7830_I2C_ADDR                 (0x48U)
+#define ADS7830_I2C_ADDR                 (0x4BU)
 #define ADS7830_CHANNEL_COUNT            (8U)
 
 #define ADS7830_STATUS_OK                (0U)

@@ -4,40 +4,14 @@
  */
 
 #include "bsp_track.h"
-
-#if TRACK_USE_ADS7830
 #include "bsp_ads7830.h"
 
 static soft_iic_info_struct s_ads7830_bus;
 static uint8 s_ads7830_ready = 0;
-#else
-/* 传感器引脚数组 */
-static const adc_pin_enum track_pins[TRACK_SENSOR_NUM] = {
-#if TRACK_SENSOR_NUM >= 1
-    TRACK_SENSOR_1,
-#endif
-#if TRACK_SENSOR_NUM >= 2
-    TRACK_SENSOR_2,
-#endif
-#if TRACK_SENSOR_NUM >= 3
-    TRACK_SENSOR_3,
-#endif
-#if TRACK_SENSOR_NUM >= 4
-    TRACK_SENSOR_4,
-#endif
-#if TRACK_SENSOR_NUM >= 5
-    TRACK_SENSOR_5,
-#endif
-#if TRACK_SENSOR_NUM >= 6
-    TRACK_SENSOR_6,
-#endif
-#if TRACK_SENSOR_NUM >= 7
-    TRACK_SENSOR_7,
-#endif
-#if TRACK_SENSOR_NUM >= 8
-    TRACK_SENSOR_8,
-#endif
-};
+
+#if BNO085_ENABLE && BNO085_USE_SOFT_IIC
+_Static_assert((ADS7830_SCL_PIN != BNO085_SCL_PIN) && (ADS7830_SDA_PIN != BNO085_SDA_PIN),
+               "ADS7830 and BNO085 cannot share the same software IIC pins.");
 #endif
 
 /* 权重数组改为 int16，防止 TRACK_WEIGHT_LIST 超出 ±127 时静默截断
@@ -45,30 +19,24 @@ static const adc_pin_enum track_pins[TRACK_SENSOR_NUM] = {
 static const int16 track_weights[TRACK_SENSOR_NUM] = TRACK_WEIGHT_LIST;
 
 /* 当前阈值 */
-#if TRACK_USE_ADS7830
 static uint16 s_threshold = TRACK_ADS7830_THRESHOLD;
-#else
-static uint16 s_threshold = TRACK_THRESHOLD;
-#endif
 
 /*-----------------------------------------------------------
  * 循迹传感器初始化
  *-----------------------------------------------------------*/
 void track_init(void)
 {
-#if TRACK_USE_ADS7830
     ads7830_init(&s_ads7830_bus,
                  ADS7830_I2C_ADDR,
                  ADS7830_SOFT_IIC_DELAY,
                  ADS7830_SCL_PIN,
                  ADS7830_SDA_PIN);
     s_ads7830_ready = (ads7830_is_ready(&s_ads7830_bus) == ADS7830_STATUS_OK) ? 1 : 0;
-#else
-    for (uint8 i = 0; i < TRACK_SENSOR_NUM; i++)
-    {
-        adc_init(track_pins[i], TRACK_ADC_RESOLUTION);
-    }
-#endif
+}
+
+uint8 track_is_ready(void)
+{
+    return s_ads7830_ready;
 }
 
 /*-----------------------------------------------------------
@@ -76,13 +44,12 @@ void track_init(void)
  *-----------------------------------------------------------*/
 void track_read_raw(track_data_t *data)
 {
-#if TRACK_USE_ADS7830
     for (uint8 i = 0; i < TRACK_SENSOR_NUM; i++)
     {
         uint32 sum = 0;
         uint8 valid_count = 0;
 
-        for (uint8 sample = 0; sample < TRACK_ADC_FILTER_COUNT; sample++)
+        for (uint8 sample = 0; sample < TRACK_ADS7830_FILTER_COUNT; sample++)
         {
             uint8 value = 0;
 
@@ -97,12 +64,6 @@ void track_read_raw(track_data_t *data)
         /* ADS7830 只有 8 位输出。通信失败时置 0，避免沿用上一帧误导控制层。 */
         data->raw[i] = (valid_count > 0U) ? (uint16)(sum / valid_count) : 0U;
     }
-#else
-    for (uint8 i = 0; i < TRACK_SENSOR_NUM; i++)
-    {
-        data->raw[i] = adc_mean_filter_convert(track_pins[i], TRACK_ADC_FILTER_COUNT);
-    }
-#endif
 }
 
 /*-----------------------------------------------------------

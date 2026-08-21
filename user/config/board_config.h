@@ -81,34 +81,17 @@
 #define ENCODER_SAMPLE_MS       10                  /* 采样周期 (ms) */
 
 /*===========================================================================
- * 循迹传感器配置 - 红外对管阵列
+ * 循迹传感器配置 - ADS7830 8 路 IIC 灰度采样
  *===========================================================================*/
-/* 传感器数量。修改数量时，TRACK_WEIGHT_LIST 的数量必须同步。 */
-#define TRACK_SENSOR_NUM        5
-
-/* 传感器引脚 (从左到右) */
-#define TRACK_SENSOR_1          ADC0_CH0_A27        /* 最左 */
-#define TRACK_SENSOR_2          ADC0_CH1_A26
-#define TRACK_SENSOR_3          ADC0_CH2_A25        /* 中间 */
-#define TRACK_SENSOR_4          ADC0_CH3_A24
-#define TRACK_SENSOR_5          ADC0_CH4_B25        /* 最右 */
-#define TRACK_SENSOR_6          ADC0_CH5_B24        /* 扩展预留 */
-#define TRACK_SENSOR_7          ADC0_CH6_B20        /* 扩展预留 */
-#define TRACK_SENSOR_8          ADC0_CH7_A22        /* 扩展预留 */
-
-/* 传感器参数 */
-#define TRACK_THRESHOLD         2000                /* 黑白阈值 (需实际标定) */
-#define TRACK_ADC_RESOLUTION    ADC_12BIT           /* ADC 分辨率 */
-#define TRACK_ADC_FILTER_COUNT  3                   /* ADC 均值滤波采样次数 */
+#define TRACK_SENSOR_NUM        8
+#define TRACK_ADS7830_FILTER_COUNT  3               /* 单通道均值滤波采样次数 */
 #define TRACK_LOST_MAX_COUNT    50                  /* 连续丢线保护次数，50 * 10ms = 500ms */
-#define TRACK_WEIGHT_LIST       {-100, -50, 0, 50, 100}
+#define TRACK_WEIGHT_LIST       {-100, -75, -50, -25, 25, 50, 75, 100}
 
-/* ADS7830 扩展 ADC。默认关闭，启用前按实际接线修改 SCL/SDA。
- * 启用后 TRACK_SENSOR_NUM 路传感器依次读取 ADS7830 CH0~CH(N-1)，阈值范围变为 0~255。
- */
-#define TRACK_USE_ADS7830       1
-#define ADS7830_SCL_PIN         B17
-#define ADS7830_SDA_PIN         B18
+/* ADS7830 输出为 8 位，阈值范围 0~255。
+ * ADS7830 独立使用 B24/B25，避免与 BNO085 的 B17/B18 软件 IIC 冲突。 */
+#define ADS7830_SCL_PIN         B24
+#define ADS7830_SDA_PIN         B25
 #define ADS7830_SOFT_IIC_DELAY  80
 #define TRACK_ADS7830_THRESHOLD 128
 

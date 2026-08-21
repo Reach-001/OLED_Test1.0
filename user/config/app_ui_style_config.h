@@ -59,7 +59,7 @@
  *=========================================================================*/
 
 #define UI_TITLE_ENABLE            1   /**< 标题栏启用标志（1=启用，0=禁用） */
-#define UI_TITLE_TEXT_COLOR        3  /**< 标题文字颜色 */
+#define UI_TITLE_TEXT_COLOR        4   /**< 标题文字颜色 */
 #define UI_TITLE_LINE_COLOR        4   /**< 标题栏底部横线颜色 */
 #define UI_TITLE_AREA_HEIGHT       22               /**< 标题栏占用高度，文字16px+线1px+上下各1px间距=22 */
 #define UI_TITLE_BASELINE_Y        16               /**< 标题文字基线纵坐标（相对于屏幕顶部） */
@@ -95,8 +95,8 @@
 
 //选中框右侧棋盘设置
 #define UI_SELECTOR_CHESS_COLOR     7               /**< 棋盘格颜色 */
-#define UI_SELECTOR_CHESS_WIDTH     5               /**< 棋盘格宽度 (px) */
-#define UI_SELECTOR_CHESS_STEP      1                /**< 棋盘格列步进 (1=密, 2=默认, 3=疏) */
+#define UI_SELECTOR_CHESS_WIDTH     6               /**< 棋盘格宽度 (px) */
+#define UI_SELECTOR_CHESS_STEP      2                /**< 棋盘格列步进 (1=密, 2=默认, 3=疏) */
 
 /*===========================================================================
  * 弹出提示框（信息提示 / 确认框）配置

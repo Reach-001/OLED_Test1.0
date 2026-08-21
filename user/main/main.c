@@ -32,6 +32,10 @@ static void system_init(void)
     /* 时钟初始化（必须第一个调用） */
     clock_init(SYSTEM_CLOCK);
 
+    /* 最早启动指示：放在串口和外设初始化前，用于定位启动卡点。 */
+    led_init();
+    led_blink(LED_SELF_TEST_TIMES, LED_SELF_TEST_MS);
+
     /* 调试串口初始化 */
     debug_init();
 
@@ -52,8 +56,12 @@ static void bsp_init(void)
     led_init();
     bsp_key_init();
     motor_init();
+#if ENCODER_ENABLE
     encoder_init();
+#endif
+#if TRACK_ENABLE
     track_init();
+#endif
 
     printf("[BSP] Done.\r\n");
 }
@@ -79,9 +87,7 @@ static void self_test(void)
 {
     printf("[TEST] Self testing...\r\n");
 
-    /* LED 按配置闪烁，提示程序已启动。 */
-    led_blink(LED_SELF_TEST_TIMES, LED_SELF_TEST_MS);
-
+#if TRACK_ENABLE
     /* 自检只打印实际配置的传感器数量，避免修改 TRACK_SENSOR_NUM 后越界。 */
     track_data_t track;
     track_read(&track);
@@ -91,6 +97,9 @@ static void self_test(void)
         printf(" %d", track.raw[i]);
     }
     printf("\r\n");
+#else
+    printf("[TEST] Track skipped.\r\n");
+#endif
 
     printf("[TEST] Ready. Press KEY1 to start.\r\n");
 }
@@ -103,8 +112,8 @@ int main(void)
     /*==================== 初始化 ====================*/
     system_init();
     bsp_init();
-    app_init();
     self_test();
+    app_init();
 
     /*==================== 主循环 ====================*/
     while (1)
@@ -140,6 +149,12 @@ int main(void)
         {
             g_task_flag.uart = 0;
             task_uart();
+        }
+
+        if (g_task_flag.imu)
+        {
+            g_task_flag.imu = 0;
+            task_imu();
         }
 
         /* UI 动画刷新任务 */

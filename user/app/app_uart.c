@@ -14,8 +14,8 @@
 #endif
 
 static app_uart_state_t s_uart[APP_UART_CHANNEL_NUM] = {
-    { true,  true,  UART_0, UART0_TX_A10,       UART0_RX_A11,       APP_UART_BAUD, 0, 0, 0 },
-    { true,  true,  UART_1, WIRELESS_UART_TX,   WIRELESS_UART_RX,   APP_UART_BAUD, 0, 0, 0 },
+    { false, false, UART_0, UART0_TX_A10,       UART0_RX_A11,       APP_UART_BAUD, 0, 0, 0 },
+    { false, false, UART_1, WIRELESS_UART_TX,   WIRELESS_UART_RX,   APP_UART_BAUD, 0, 0, 0 },
     { false, false, UART_2, UART2_TX_A21,       UART2_RX_A22,       APP_UART_BAUD, 0, 0, 0 },
     { false, false, UART_3, UART3_TX_B12,       UART3_RX_B13,       APP_UART_BAUD, 0, 0, 0 },
 };
@@ -35,6 +35,16 @@ static void app_uart_hw_init(uint8 ch)
 
 void app_uart_init(void)
 {
+#if !APP_UART_ENABLE
+    for (uint8 ch = 0; ch < APP_UART_CHANNEL_NUM; ch++)
+    {
+        s_uart[ch].enabled = false;
+        s_uart[ch].inited = false;
+        s_uart[ch].tx_count = 0;
+        s_uart[ch].rx_count = 0;
+        s_uart[ch].last_rx  = 0;
+    }
+#else
     /* 仅清零统计计数，不覆盖静态初始值 (enabled/inited 已在声明时设好) */
     for (uint8 ch = 0; ch < APP_UART_CHANNEL_NUM; ch++)
     {
@@ -42,10 +52,22 @@ void app_uart_init(void)
         s_uart[ch].rx_count = 0;
         s_uart[ch].last_rx  = 0;
     }
+
+    /* 上电默认开启 UART0（与 debug 串口共用，debug_init 已完成硬件初始化）
+     * 和 UART1（无线/蓝牙模块），避免每次上电都要进 UI 手动打开。 */
+    s_uart[0].enabled = true;
+    s_uart[0].inited  = true;           /* 硬件由 debug_init() 初始化，这里不重复操作 */
+    (void)app_uart_set_enable(1, true); /* 初始化 UART1 硬件并开启 */
+#endif
 }
 
 bool app_uart_set_enable(uint8 ch, bool enable)
 {
+#if !APP_UART_ENABLE
+    (void)ch;
+    (void)enable;
+    return false;
+#else
     if (!app_uart_valid_ch(ch)) return false;
 
     static UART_Regs *const uart_list[APP_UART_CHANNEL_NUM] = {
@@ -67,6 +89,7 @@ bool app_uart_set_enable(uint8 ch, bool enable)
     }
 
     return true;
+#endif
 }
 
 void app_uart_send_test(uint8 ch)

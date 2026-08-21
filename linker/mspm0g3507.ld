@@ -39,7 +39,7 @@ _Min_Stack_Size = DEFINED(__stack_size__) ? __stack_size__ : 0x800; /* required 
 /* Specify the memory areas */
 MEMORY
 {
-    FLASH           (RX)  : ORIGIN = 0x00000000, LENGTH = 0x00020000
+    FLASH           (RX)  : ORIGIN = 0x00000000, LENGTH = 0x0001FC00
     SRAM            (RWX) : ORIGIN = 0x20200000, LENGTH = 0x00008000
     BCR_CONFIG      (R)   : ORIGIN = 0x41C00000, LENGTH = 0x000000FF
     BSL_CONFIG      (R)   : ORIGIN = 0x41C00100, LENGTH = 0x00000080

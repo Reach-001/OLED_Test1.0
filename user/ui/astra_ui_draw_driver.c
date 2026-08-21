@@ -1112,7 +1112,13 @@ void st7789_draw_utf8(int16_t x, int16_t y, const char *str)
             x += draw_cn_char(x, y, unicode);
             p += 3;
         }
-        else if ((c & 0xE0) == 0xC0) { p += 2; }  /* Latin-1 扩展, 跳过 */
+        else if ((c & 0xE0) == 0xC0 && p[1])
+        {
+            uint16_t unicode = ((uint16_t)(c & 0x1F) << 6)
+                             |  (uint16_t)(p[1] & 0x3F);
+            x += draw_cn_char(x, y, unicode);
+            p += 2;
+        }
         else                         { p++;     }  /* 无效字节, 跳过   */
     }
 }

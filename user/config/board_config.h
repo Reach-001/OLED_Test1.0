@@ -42,6 +42,10 @@
  * 电机配置 - 双路直流电机 (TB6612/DRV8833 驱动)
  *===========================================================================*/
 #define MOTOR_ENABLE            0                   /* UI bring-up: keep motor pins inactive */
+#define ENCODER_ENABLE          0                   /* 编码器未接时可改 0，系统仍正常运行 */
+#define TRACK_ENABLE            1                   /* 循迹板未接时可改 0，跳过 ADC 采样 */
+#define LCD_ENABLE              1                   /* 屏幕未接时可改 0，跳过 ST7789 初始化和刷新 */
+#define APP_UART_ENABLE         1                   /* 外部通信 UART 未接时可改 0，跳过应用串口轮询 */
 
 /* 电机1 (左电机) */
 #define MOTOR_L_PWM             PWM_TIM_A0_CH0_B8   /* 左电机 PWM */
@@ -102,7 +106,7 @@
 /* ADS7830 扩展 ADC。默认关闭，启用前按实际接线修改 SCL/SDA。
  * 启用后 TRACK_SENSOR_NUM 路传感器依次读取 ADS7830 CH0~CH(N-1)，阈值范围变为 0~255。
  */
-#define TRACK_USE_ADS7830       0
+#define TRACK_USE_ADS7830       1
 #define ADS7830_SCL_PIN         B17
 #define ADS7830_SDA_PIN         B18
 #define ADS7830_SOFT_IIC_DELAY  80
@@ -118,17 +122,37 @@
 #define WIRELESS_UART_RX        UART1_RX_B5
 
 /*===========================================================================
- * BNO085 IMU 配置 - 软件 IIC
+ * BNO085 IMU 配置
  *===========================================================================*/
-#define BNO085_SOFT_IIC_DELAY   100                 /* 软件 IIC 延时，数值越小通信越快；
-                                                     * 80MHz 下 50 可能被优化到 <1us 导致时序异常，
-                                                     * 建议 100~200，约合 100kHz 标准 I2C 速率 */
-#define BNO085_SCL_PIN          B17                 /* BNO085 SCL */
-#define BNO085_SDA_PIN          B18                 /* BNO085 SDA */
+#define BNO085_ENABLE                   1             /* 未接或初始化失败时自动跳过，不阻塞系统 */
+#define BNO085_INIT_MAX_RETRY           1             /* 初始化失败后跳过，避免主循环每秒阻塞重试 */
+#define BNO085_INIT_RETRY_INTERVAL_MS   1000U         /* 仅在允许多次重试时生效，单位 ms */
+#define BNO085_USE_SOFT_IIC             1             /* 默认软件 IIC，避开硬件 I2C1 状态机兼容问题 */
+#define BNO085_SOFT_IIC_DELAY           80            /* 软件 IIC 延时，优先保证 BNO085 启动阶段稳定 */
+#define BNO085_STARTUP_DELAY_MS         300U          /* 上电等待，过短会漏启动包，过长会拖慢 APP 初始化 */
+#define BNO085_STARTUP_FLUSH_MS         80U           /* 清启动包时间；软件 IIC 下不宜长时间占用主循环 */
+#define BNO085_FEATURE_FLUSH_MS         80U           /* SetFeature 后清控制包时间 */
+#define BNO085_IIC_SPEED                (100 * 1000)  /* BNO085_USE_SOFT_IIC=0 时生效 */
+#define BNO085_SCL_PIN                  B17           /* 软件 IIC 默认接线: BNO085 SCL */
+#define BNO085_SDA_PIN                  B18           /* 软件 IIC 默认接线: BNO085 SDA */
+#define BNO085_SCL_AF                   GPIO_AF4      /* 硬件 I2C1 时需把引脚改为 B2/PB2 */
+#define BNO085_SDA_AF                   GPIO_AF4      /* 硬件 I2C1 时需把引脚改为 B3/PB3 */
 
-/*===========================================================================
- * OLED/LCD 显示屏配置 (可选)
- *===========================================================================*/
+/* BNO085 各传感器报告输出频率，单位 Hz。
+ * 软件 IIC 下报告频率过高会抢占控制循环，先用低频稳定读取。
+ * 扩展报告设为 0 表示不发送 SetFeature，避免启动阶段一次堆积过多长包。 */
+#define BNO085_GYRO_RATE_HZ             20
+#define BNO085_ROTATION_VECTOR_RATE_HZ  10
+#define BNO085_ACCEL_RATE_HZ            0
+#define BNO085_LINEAR_ACCEL_RATE_HZ     0
+#define BNO085_MAG_RATE_HZ              0
+#define BNO085_STEP_RATE_HZ             0
+#define BNO085_STABILITY_RATE_HZ        0
+#define BNO085_ACTIVITY_RATE_HZ         0
+
+/* IMU 轮询任务周期，应高于最高报告频率，避免 BNO085 FIFO 堆积。 */
+#define TASK_IMU_PERIOD         20                  /* BNO085 轮询: 20ms (50Hz) */
+#define TASK_STATUS_PRINT_PERIOD_MS 200U            /* 串口状态输出降频，避免 printf 阻塞主循环 */
 #define LCD_SPI_INDEX           SPI_1
 #define LCD_SPI_SPEED           (30 * 1000 * 1000)
 #define LCD_SCL_SPI_PIN         SPI1_SCK_B9
@@ -157,7 +181,6 @@
 #define TASK_UI_PERIOD          20                  /* UI 动画刷新: 20ms (50Hz) */
 #define TASK_KEY_PERIOD         10                  /* 按键扫描: 10ms */
 #define TASK_UART_PERIOD        5                   /* UART 轮询: 5ms */
-#define TASK_IMU_PERIOD         10                  /* BNO085 轮询: 10ms */
 /* 新增任务时，在这里添加 TASK_xxx_PERIOD，再到 app_task.h/c 和 main.c 接入。 */
 #define TASK_TICK_MAX           10000               /* 调度计数器回绕阈值 */
 

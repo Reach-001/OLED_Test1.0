@@ -38,6 +38,10 @@ extern void astra_push_info_bar(char *_content, const uint16_t _span);
 #define POP_UP_HEIGHT 28         /**< 弹窗高度 (原 20)                 */
 #define POP_UP_OFFSET 16         /**< 弹窗水平内边距 (原 8)           */
 
+/* 弹窗初始位置: 收在屏幕上方, 弹出时下滑到屏幕 30% 位置 */
+#define POP_UP_INIT_Y   (0 - 2 * POP_UP_HEIGHT)
+#define POP_UP_TARGET_Y (OLED_HEIGHT * 30 / 100)
+
 typedef struct astra_pop_up_t
 {
   char *content;

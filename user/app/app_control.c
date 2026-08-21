@@ -4,6 +4,14 @@
  */
 
 #include "app_control.h"
+#include "zf_driver_flash.h"
+
+#define CONTROL_FLASH_SECTION        (FLASH_MAX_SECTION_INDEX - 1)
+#define CONTROL_FLASH_PAGE           (FLASH_MAX_PAGE_INDEX - 1)
+#define CONTROL_FLASH_MAGIC          0x4354524CU  /* "CTRL" */
+#define CONTROL_FLASH_VERSION        1U
+#define CONTROL_FLASH_WORD_COUNT     8U
+#define CONTROL_FLASH_CHECK_XOR      0xA5A55A5AU
 
 /* 控制参数实例 */
 static control_param_t s_control = {
@@ -46,11 +54,62 @@ static int16 limit_i(int16 value, int16 max)
     return value;
 }
 
+static uint32 control_flash_checksum(const uint32 *data, uint16 len)
+{
+    uint32 checksum = CONTROL_FLASH_CHECK_XOR;
+
+    for (uint16 i = 0; i < len; i++)
+    {
+        checksum ^= data[i] + 0x9E3779B9U + (checksum << 6) + (checksum >> 2);
+    }
+
+    return checksum;
+}
+
+static uint8 control_param_in_range(uint32 target_speed,
+                                    uint32 steer_kp,
+                                    uint32 steer_kd,
+                                    uint32 speed_kp,
+                                    uint32 speed_ki)
+{
+    return (target_speed <= TARGET_SPEED_MAX
+            && steer_kp <= 120U
+            && steer_kd <= 80U
+            && speed_kp <= 100U
+            && speed_ki <= 60U);
+}
+
+static uint8 control_load_tune_params(void)
+{
+    uint32 data[CONTROL_FLASH_WORD_COUNT] = {};
+
+    if (!flash_check(CONTROL_FLASH_SECTION, CONTROL_FLASH_PAGE))
+        return 1;
+
+    flash_read_page(CONTROL_FLASH_SECTION, CONTROL_FLASH_PAGE,
+                    data, CONTROL_FLASH_WORD_COUNT);
+
+    if (data[0] != CONTROL_FLASH_MAGIC || data[1] != CONTROL_FLASH_VERSION)
+        return 1;
+
+    if (data[7] != control_flash_checksum(data, CONTROL_FLASH_WORD_COUNT - 1))
+        return 1;
+
+    if (!control_param_in_range(data[2], data[3], data[4], data[5], data[6]))
+        return 1;
+
+    s_control.target_speed = (int16)data[2];
+    control_set_steer_pid((float)data[3], PID_STEER_KI, (float)data[4]);
+    control_set_speed_pid((float)data[5], (float)data[6], PID_SPEED_KD);
+    return 0;
+}
+
 /*-----------------------------------------------------------
  * 控制模块初始化
  *-----------------------------------------------------------*/
 void control_init(void)
 {
+    control_load_tune_params();
     control_reset();
 }
 
@@ -189,6 +248,27 @@ void control_set_speed_pid(float kp, float ki, float kd)
 control_param_t* control_get_param(void)
 {
     return &s_control;
+}
+
+/*-----------------------------------------------------------
+ * 保存滑条调参值
+ *-----------------------------------------------------------*/
+uint8 control_save_tune_params(void)
+{
+    uint32 data[CONTROL_FLASH_WORD_COUNT] = {};
+
+    data[0] = CONTROL_FLASH_MAGIC;
+    data[1] = CONTROL_FLASH_VERSION;
+    data[2] = (uint32)s_control.target_speed;
+    data[3] = (uint32)((int16)s_control.steer_pid.kp);
+    data[4] = (uint32)((int16)s_control.steer_pid.kd);
+    data[5] = (uint32)((int16)s_control.speed_pid.kp);
+    data[6] = (uint32)((int16)s_control.speed_pid.ki);
+    data[7] = control_flash_checksum(data, CONTROL_FLASH_WORD_COUNT - 1);
+
+    /* Flash 擦写寿命有限，只在用户确认滑条或恢复默认值时调用。 */
+    return flash_write_page(CONTROL_FLASH_SECTION, CONTROL_FLASH_PAGE,
+                            data, CONTROL_FLASH_WORD_COUNT);
 }
 
 /*-----------------------------------------------------------

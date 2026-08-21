@@ -24,6 +24,7 @@ typedef struct
     uint8 ui;           /* UI 动画刷新任务 */
     uint8 key;          /* 按键扫描任务 */
     uint8 uart;         /* UART 轮询任务 */
+    uint8 imu;          /* BNO085 轮询任务 */
 } task_flag_t;
 
 /* 全局任务标志 */
@@ -38,6 +39,16 @@ typedef enum
     SYS_STATE_STOP,         /* 停止状态 */
     SYS_STATE_ERROR,        /* 错误状态 */
 } sys_state_enum;
+
+#define COMPETITION_TASK_COUNT 4U
+
+typedef struct
+{
+    int16 speed;        /* 当前赛题目标速度 */
+    int16 parameter1;   /* 预留参数 1，具体含义按赛题定义 */
+    int16 parameter2;   /* 预留参数 2，具体含义按赛题定义 */
+    int16 parameter3;   /* 预留参数 3，具体含义按赛题定义 */
+} competition_task_param_t;
 
 /**
  * @brief   任务调度初始化
@@ -82,6 +93,11 @@ void task_key(void);
 void task_uart(void);
 
 /**
+ * @brief   BNO085 轮询任务
+ */
+void task_imu(void);
+
+/**
  * @brief   获取循迹传感器数据指针（供 UI 等模块读取）
  * @return  指向最新 track_data 的只读指针
  */
@@ -103,6 +119,10 @@ void task_set_state(sys_state_enum state);
  * @return  sys_state_enum
  */
 sys_state_enum task_get_state(void);
+
+void task_set_competition_task(uint8 task_id);
+uint8 task_get_competition_task(void);
+competition_task_param_t *task_get_competition_param(uint8 task_id);
 
 /**
  * @brief   系统启动

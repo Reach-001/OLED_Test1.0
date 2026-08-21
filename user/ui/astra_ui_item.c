@@ -39,10 +39,6 @@ void astra_push_info_bar(char *_content, const uint16_t _span)
 }
 
 /* --- 弹窗 --- */
-/* 弹窗初始位置: 收在屏幕上方, 弹出时下滑到屏幕 30% 位置 */
-#define POP_UP_INIT_Y  (0 - 2 * POP_UP_HEIGHT)
-#define POP_UP_TARGET_Y (OLED_HEIGHT * 30 / 100)
-
 astra_pop_up_t astra_pop_up = {0, 1, POP_UP_INIT_Y, POP_UP_INIT_Y, 80, 80, false, 0, 1};
 
 void astra_push_pop_up(char *_content, const uint16_t _span)

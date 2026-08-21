@@ -37,6 +37,8 @@
 
 #include "zf_driver_adc.h"
 
+#define ADC_CONVERT_TIMEOUT_COUNT       (100000UL)
+
 static  ADC12_Regs  *adc_list[2]        = {ADC0, ADC1};                         // 模块索引数组
 static  uint8       adc_resolution[2]   = {ADC_12BIT, ADC_12BIT};               // 精度数据备份
 
@@ -51,6 +53,7 @@ uint16 adc_convert (adc_pin_enum adc_pin)
 {
     uint8   adc_index       = (adc_pin >> ADC_INDEX_OFFSET) & ADC_INDEX_MASK;
     uint8   adc_channel     = (adc_pin >> ADC_CHANNEL_OFFSET) & ADC_CHANNEL_MASK;
+    uint32  timeout_count   = ADC_CONVERT_TIMEOUT_COUNT;
     uint16  return_value    = 0;
 
     DL_ADC12_disableConversions(adc_list[adc_index]);
@@ -65,7 +68,14 @@ uint16 adc_convert (adc_pin_enum adc_pin)
     DL_ADC12_enableConversions(adc_list[adc_index]);
 
     DL_ADC12_startConversion(adc_list[adc_index]);
-    while(!(adc_list[adc_index]->ULLMEM.CPU_INT.RIS & ADC12_CPU_INT_RIS_MEMRESIFG0_SET));
+    while (!(adc_list[adc_index]->ULLMEM.CPU_INT.RIS & ADC12_CPU_INT_RIS_MEMRESIFG0_SET))
+    {
+        if (0U == timeout_count--)
+        {
+            DL_ADC12_stopConversion(adc_list[adc_index]);
+            return 0;
+        }
+    }
     DL_ADC12_stopConversion(adc_list[adc_index]);
     return_value = DL_ADC12_getMemResult(adc_list[adc_index], DL_ADC12_MEM_IDX_0);
 

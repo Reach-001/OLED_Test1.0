@@ -39,10 +39,10 @@
 
 #include "zf_common_typedef.h"
 
-// 以下宏定义为芯片固定设置 不允许用户修改
-#define FLASH_BASE_ADDR             ( 0x00016000 )                              //0x00008000(前32k地址)  前32k可擦除10w次 后96k擦除1w次
-#define FLASH_MAX_PAGE_INDEX        ( 2 )
-#define FLASH_MAX_SECTION_INDEX     ( 6 )
+// 运行时参数保存在最后 1KB，链接脚本必须同步预留该页。
+#define FLASH_BASE_ADDR             ( 0x0001FC00 )
+#define FLASH_MAX_PAGE_INDEX        ( 1 )
+#define FLASH_MAX_SECTION_INDEX     ( 1 )
 #define FLASH_PAGE_SIZE             ( 0x00000400 )                              // 1K byte
 #define FLASH_SECTION_SIZE          ( FLASH_PAGE_SIZE * FLASH_MAX_PAGE_INDEX )  // 2K byte
 #define FLASH_OPERATION_TIME_OUT    ( 0x0FFF )

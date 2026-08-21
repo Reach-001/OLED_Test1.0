@@ -54,6 +54,49 @@
 #define soft_iic_delay(x)  for(vuint32 i = x; i --; )
 
 //-------------------------------------------------------------------------------------------------------------------
+// 函数简介     释放 SCL 并等待从机结束时钟延展
+// 参数说明     *soft_iic_obj   软件 IIC 指定信息
+// 返回参数     uint8           0=正常 1=延展超时
+// 备注信息     BNO085 等器件会在传输中拉低 SCL 进行时钟延展（clock stretching），
+//              SCL 必须为开漏输出，且主机拉高后要等从机松手才能继续，
+//              否则从机时序被打乱，表现为读不到数据或总线卡死。
+//-------------------------------------------------------------------------------------------------------------------
+#define SOFT_IIC_STRETCH_TIMEOUT  (20000)                                   // 延展超时计数，约 1~2ms
+
+static uint8 soft_iic_scl_release_wait (soft_iic_info_struct *soft_iic_obj)
+{
+    uint32 timeout = SOFT_IIC_STRETCH_TIMEOUT;
+
+    zf_assert(NULL != soft_iic_obj);
+    gpio_high(soft_iic_obj->scl_pin);                                       // 开漏输出：写高即释放 SCL
+    while(!gpio_get_level((gpio_pin_enum)soft_iic_obj->scl_pin))            // 从机仍在拉低 SCL（延展中）
+    {
+        if(0 == -- timeout)
+        {
+            return 1;                                                       // 超时退出，防止死等卡死系统
+        }
+    }
+    return 0;
+}
+
+//-------------------------------------------------------------------------------------------------------------------
+// 函数简介     使能引脚内部上拉
+// 参数说明     pin             引脚编号
+// 备注信息     开漏总线依赖上拉电阻；芯片内部上拉较弱（几十kΩ级），仅作兜底，
+//              模块未自带外部上拉（典型 4.7kΩ~10kΩ）时建议自行加装
+//-------------------------------------------------------------------------------------------------------------------
+extern const uint8 gpio_iomux_index[60];                                    // 引脚 PINCM 索引表（zf_driver_gpio.c）
+
+static void soft_iic_enable_pullup (uint32 pin)
+{
+    /* 索引方式与 zf_driver_gpio.c 保持一致：组别 * 32 + 组内下标 */
+    uint32 index = (((pin >> GPIO_GROUP_INDEX_OFFSET) & GPIO_GROUP_INDEX_MASK) * 32)
+                 + (pin & GPIO_PIN_INDEX_MASK);
+
+    IOMUX->SECCFG.PINCM[gpio_iomux_index[index]] |= IOMUX_PINCM_PIPU_ENABLE;
+}
+
+//-------------------------------------------------------------------------------------------------------------------
 // 函数简介     软件 IIC START 信号
 // 参数说明     *soft_iic_obj   软件 IIC 指定信息 可以参照 zf_driver_soft_iic.h 里的格式看看
 // 返回参数     void
@@ -63,7 +106,7 @@
 void soft_iic_start (soft_iic_info_struct *soft_iic_obj)
 {
     zf_assert(NULL != soft_iic_obj);
-    gpio_high(soft_iic_obj->scl_pin);                                           // SCL 高电平
+    (void)soft_iic_scl_release_wait(soft_iic_obj);                              // SCL 高电平（等待从机延展结束）
     gpio_high(soft_iic_obj->sda_pin);                                           // SDA 高电平
 
     soft_iic_delay(soft_iic_obj->delay);
@@ -87,7 +130,7 @@ void soft_iic_stop (soft_iic_info_struct *soft_iic_obj)
     gpio_low(soft_iic_obj->scl_pin);                                            // SCL 低电平
 
     soft_iic_delay(soft_iic_obj->delay);
-    gpio_high(soft_iic_obj->scl_pin);                                           // SCL 先拉高
+    (void)soft_iic_scl_release_wait(soft_iic_obj);                              // SCL 先拉高（等待从机延展结束）
     soft_iic_delay(soft_iic_obj->delay);
     gpio_high(soft_iic_obj->sda_pin);                                           // SDA 再拉高
     soft_iic_delay(soft_iic_obj->delay);
@@ -116,7 +159,7 @@ void soft_iic_send_ack (soft_iic_info_struct *soft_iic_obj, uint8 ack)
     }
 
     soft_iic_delay(soft_iic_obj->delay);
-    gpio_high(soft_iic_obj->scl_pin);                                           // SCL 拉高
+    (void)soft_iic_scl_release_wait(soft_iic_obj);                              // SCL 拉高（等待从机延展结束）
     soft_iic_delay(soft_iic_obj->delay);
     gpio_low(soft_iic_obj->scl_pin);                                            // SCL 拉低
     gpio_high(soft_iic_obj->sda_pin);                                           // SDA 拉高
@@ -140,7 +183,7 @@ uint8 soft_iic_wait_ack (soft_iic_info_struct *soft_iic_obj)
 #endif
     soft_iic_delay(soft_iic_obj->delay);
 
-    gpio_high(soft_iic_obj->scl_pin);                                           // SCL 高电平
+    (void)soft_iic_scl_release_wait(soft_iic_obj);                              // SCL 高电平（等待从机延展结束）
     soft_iic_delay(soft_iic_obj->delay);
 
     if(gpio_get_level((gpio_pin_enum)soft_iic_obj->sda_pin))
@@ -175,7 +218,7 @@ uint8 soft_iic_send_data (soft_iic_info_struct *soft_iic_obj, const uint8 data)
         temp >>= 1;
 
         soft_iic_delay(soft_iic_obj->delay / 2);
-        gpio_high(soft_iic_obj->scl_pin);                                       // SCL 拉高
+        (void)soft_iic_scl_release_wait(soft_iic_obj);                          // SCL 拉高（等待从机延展结束）
         soft_iic_delay(soft_iic_obj->delay);
         gpio_low(soft_iic_obj->scl_pin);                                        // SCL 拉低
         soft_iic_delay(soft_iic_obj->delay / 2);
@@ -206,7 +249,7 @@ uint8 soft_iic_read_data (soft_iic_info_struct *soft_iic_obj, uint8 ack)
     {
         gpio_low(soft_iic_obj->scl_pin);                                        // SCL 拉低
         soft_iic_delay(soft_iic_obj->delay);
-        gpio_high(soft_iic_obj->scl_pin);                                       // SCL 拉高
+        (void)soft_iic_scl_release_wait(soft_iic_obj);                          // SCL 拉高（等待从机延展结束）
         soft_iic_delay(soft_iic_obj->delay);
         data = ((data << 1) | gpio_get_level((gpio_pin_enum)soft_iic_obj->sda_pin));
     }
@@ -737,6 +780,10 @@ void soft_iic_init (soft_iic_info_struct *soft_iic_obj, uint8 addr, uint32 delay
     soft_iic_obj->sda_pin = sda_pin;
     soft_iic_obj->addr = addr;
     soft_iic_obj->delay = delay;
-    gpio_init(scl_pin, GPO, GPIO_HIGH, GPO_PUSH_PULL);                          // 提取对应IO索引 AF功能编码
+    /* SCL/SDA 均为开漏输出：符合 IIC 电气规范，且支持从机时钟延展（BNO085 必需） */
+    gpio_init(scl_pin, GPO, GPIO_HIGH, GPO_OPEN_DRAIN);                         // 提取对应IO索引 AF功能编码
     gpio_init(sda_pin, GPO, GPIO_HIGH, GPO_OPEN_DRAIN);                         // 提取对应IO索引 AF功能编码
+    /* 开漏依赖上拉电阻：使能内部上拉兜底（模块自带外部上拉时并联无害） */
+    soft_iic_enable_pullup(scl_pin);
+    soft_iic_enable_pullup(sda_pin);
 }

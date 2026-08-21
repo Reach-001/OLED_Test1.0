@@ -2,15 +2,16 @@
  * @file    app_ui.c
  * @brief   B21 按键到 Astra UI 的适配层。
  * @details 本文件负责：
- *            1. 构建实际控制、PID 调参和控件演示页面
+ *            1. 构建比赛 TASK 入口、任务参数和通用调试页面
  *            2. 将单键物理按键事件映射为 UI 操作
  *            3. 驱动 UI 的刷新循环
  *
  * @par 操作约定：
  *   - 单击：     切换下一个选项
- *   - 双击：     进入/确认当前选项
+ *   - KEY2 单击：进入/确认；根菜单 TASK 项为直接启动
  *   - 长按：     返回上一级
- *   - 单击+长按： 返回根菜单
+ *   - KEY2 长按：进入 TASK 参数页或子菜单
+ *   - KEY1 长按：返回根菜单
  */
 
 #include "app_ui.h"
@@ -22,6 +23,7 @@
 #include "app_task.h"
 #include "app_uart.h"
 #include "boot_logo_bitmap.h"
+#include "zf_device_bno085.h"
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -99,17 +101,14 @@ static void ui_draw_boot_logo(void)
  * 控件状态变量
  *=========================================================================*/
 
-/** 运行开关显示值，进入页面时从控制模块同步 */
-static bool s_ui_run_enable = false;
-
-/** 目标速度调节值 */
-static int16_t s_ui_target_speed = TARGET_SPEED_DEFAULT;
-
 /** PID 调参值，使用整数显示，和当前控制模块参数保持一致 */
 static int16_t s_ui_steer_kp = (int16_t)PID_STEER_KP;
 static int16_t s_ui_steer_kd = (int16_t)PID_STEER_KD;
 static int16_t s_ui_speed_kp = (int16_t)PID_SPEED_KP;
 static int16_t s_ui_speed_ki = (int16_t)PID_SPEED_KI;
+
+static astra_list_item_t *s_task_item[COMPETITION_TASK_COUNT] = {};
+static char s_task_status_text[24] = {};
 
 /*===========================================================================
  * UART 四通道 — 开关 + 长按进详情
@@ -159,12 +158,9 @@ static void ui_uart_info_loop(void)
     oled_set_draw_color(UI_COLOR_WHITE);
     oled_draw_H_line(8, _y0 + 50, OLED_WIDTH - 16);
 
-    /* TX 发送字节数 */
-    snprintf(b, sizeof(b), "TX: %u", st->tx_count);
+    /* UI 不显示累计字节数，避免长时间运行后数字变长挤占版面。 */
+    snprintf(b, sizeof(b), "LAST RX: 0x%02X", st->last_rx);
     oled_draw_UTF8(8, _y0 + 66, b);
-    /* RX 接收: 字节数 + 最后收到的字节 */
-    snprintf(b, sizeof(b), "RX: %u  LAST:0x%02X", st->rx_count, st->last_rx);
-    oled_draw_UTF8(8, _y0 + 84, b);
 }
 
 /* ---- 测试发送回调 ---- */
@@ -175,58 +171,127 @@ static void ui_uart_tx_test(void)
 }
 
 /*===========================================================================
- * 陀螺仪页面 — IMU660RA 数据显示
+ * 陀螺仪页面 — BNO085 数据显示
  *=========================================================================*/
 
-/* 引用逐飞 IMU660RA 数据变量（extern，由设备驱动模块提供） */
-extern int16 imu660ra_gyro_x, imu660ra_gyro_y, imu660ra_gyro_z;
-extern int16 imu660ra_acc_x,  imu660ra_acc_y,  imu660ra_acc_z;
-
 static char s_imu_gyro_str[48] = {};
-static char s_imu_acc_str[48]  = {};
-static char s_imu_info_str[32] = {};
-static bool s_imu_ok = false;
+static char s_imu_angle_str[48] = {};
+static char s_imu_info_str[48] = {};
+
+/* RPY 零点偏移，单位：毫度（md），按 Roll/Pitch/Yaw 顺序 */
+static int32 s_imu_rpy_offset_md[3] = {0};
+static uint8 s_imu_page_active = 0;
+
+/**
+ * @brief 将角度差规范化到 [-180000, 180000] 毫度区间
+ * @param angle_md  输入角度差，单位毫度
+ * @return int32    规范化后的角度差
+ */
+static int32 ui_imu_wrap_angle_md(int32 angle_md)
+{
+    while (angle_md > 180000)
+    {
+        angle_md -= 360000;
+    }
+    while (angle_md < -180000)
+    {
+        angle_md += 360000;
+    }
+    return angle_md;
+}
+
+/**
+ * @brief KEY1 短按归零 RPY：把当前 Roll/Pitch/Yaw 记为新的零点
+ */
+static void ui_imu_zero_rpy(void)
+{
+    const bno085_imu_data_t *imu = bno085_get_imu_data();
+
+    s_imu_rpy_offset_md[0] = imu->roll_md;
+    s_imu_rpy_offset_md[1] = imu->pitch_md;
+    s_imu_rpy_offset_md[2] = imu->yaw_md;
+
+    astra_push_info_bar("RPY ZERO", 600);
+}
 
 static void ui_imu_init(void)
 {
-    s_imu_ok = (imu660ra_gyro_x != 0 || imu660ra_gyro_y != 0
-             || imu660ra_gyro_z != 0 || imu660ra_acc_x != 0);
+    s_imu_page_active = 1;
 }
 
 static void ui_imu_loop(void)
 {
+    const bno085_imu_data_t *imu = bno085_get_imu_data();
+    uint8 imu_ready = bno085_is_ready();
+    uint8 zero_active = (s_imu_rpy_offset_md[0] != 0 ||
+                         s_imu_rpy_offset_md[1] != 0 ||
+                         s_imu_rpy_offset_md[2] != 0);
+
     st7789_set_font(astra_default_font);
 
-    oled_set_draw_color(UI_COLOR_WHITE);
-    oled_draw_UTF8(8, 20, "IMU660RA");
-
-    /* 陀螺仪数据（°/s） */
-    snprintf(s_imu_gyro_str, sizeof(s_imu_gyro_str),
-             "G: %6d %6d %6d",
-             imu660ra_gyro_x, imu660ra_gyro_y, imu660ra_gyro_z);
-    oled_draw_UTF8(8, 42, s_imu_gyro_str);
-
-    /* 加速度计数据 */
-    snprintf(s_imu_acc_str, sizeof(s_imu_acc_str),
-             "A: %6d %6d %6d",
-             imu660ra_acc_x, imu660ra_acc_y, imu660ra_acc_z);
-    oled_draw_UTF8(8, 60, s_imu_acc_str);
-
-    /* 标签 */
-    oled_set_draw_color(UI_COLOR_GRAY);
-    oled_draw_UTF8(8, 80, "X(dps)  Y(dps)  Z(dps)");
-    oled_draw_UTF8(8, 96, "X(g)    Y(g)    Z(g)");
-
-    /* 状态指示 */
-    oled_set_draw_color(s_imu_ok ? UI_COLOR_MINT : UI_COLOR_AMBER);
+    /* 第1行只保留固定长度状态，避免计数增长挤占后续显示。 */
+    oled_set_draw_color(imu_ready ? UI_COLOR_MINT : UI_COLOR_AMBER);
     snprintf(s_imu_info_str, sizeof(s_imu_info_str),
-             "%s", s_imu_ok ? "DATA OK" : "NO DATA");
-    oled_draw_UTF8(8, 118, s_imu_info_str);
+             "BNO085%s %s A:%02X E:%u",
+             zero_active ? "[Z]" : "",
+             imu_ready ? "READY" : "NO IMU",
+             bno085_get_i2c_addr(),
+             bno085_get_last_error());
+    oled_draw_UTF8(2, 16, s_imu_info_str);
+
+    /* 第2行：陀螺仪角速度 dps */
+    oled_set_draw_color(UI_COLOR_WHITE);
+    snprintf(s_imu_gyro_str, sizeof(s_imu_gyro_str),
+             "G:%6.2f %6.2f %6.2f",
+             (float)imu->gyro.mdps_x / 1000.0f,
+             (float)imu->gyro.mdps_y / 1000.0f,
+             (float)imu->gyro.mdps_z / 1000.0f);
+    oled_draw_UTF8(2, 32, s_imu_gyro_str);
+
+    /* 第3行：加速度计 g */
+    snprintf(s_imu_angle_str, sizeof(s_imu_angle_str),
+             "A:%6.2f %6.2f %6.2f",
+             (float)imu->accel_raw_x / 256.0f,
+             (float)imu->accel_raw_y / 256.0f,
+             (float)imu->accel_raw_z / 256.0f);
+    oled_draw_UTF8(2, 48, s_imu_angle_str);
+
+    /* 第4行：线性加速度计 g（去重力） */
+    snprintf(s_imu_info_str, sizeof(s_imu_info_str),
+             "L:%6.2f %6.2f %6.2f",
+             (float)imu->lin_accel_raw_x / 256.0f,
+             (float)imu->lin_accel_raw_y / 256.0f,
+             (float)imu->lin_accel_raw_z / 256.0f);
+    oled_draw_UTF8(2, 64, s_imu_info_str);
+
+    /* 第5行：欧拉角 deg（减去零点偏移并做 [-180,180] 规范化） */
+    snprintf(s_imu_angle_str, sizeof(s_imu_angle_str),
+             "RPY:%6.2f %6.2f %6.2f",
+             (float)ui_imu_wrap_angle_md(imu->roll_md - s_imu_rpy_offset_md[0]) / 1000.0f,
+             (float)ui_imu_wrap_angle_md(imu->pitch_md - s_imu_rpy_offset_md[1]) / 1000.0f,
+             (float)ui_imu_wrap_angle_md(imu->yaw_md - s_imu_rpy_offset_md[2]) / 1000.0f);
+    oled_draw_UTF8(2, 80, s_imu_angle_str);
+
+    /* 第6行：磁力计 uT */
+    snprintf(s_imu_info_str, sizeof(s_imu_info_str),
+             "M:%6.2f %6.2f %6.2f",
+             (float)imu->mag_raw_x / 16.0f,
+             (float)imu->mag_raw_y / 16.0f,
+             (float)imu->mag_raw_z / 16.0f);
+    oled_draw_UTF8(2, 96, s_imu_info_str);
+
+    /* 第7行去掉累计计步，避免数字增长后遮挡边界。 */
+    oled_set_draw_color(UI_COLOR_GRAY);
+    snprintf(s_imu_info_str, sizeof(s_imu_info_str),
+             "SB:%u AC:%u",
+             (unsigned int)imu->stability_classifier,
+             (unsigned int)imu->activity_classifier);
+    oled_draw_UTF8(2, 112, s_imu_info_str);
 }
 
 static void ui_imu_exit(void)
 {
-    /* 无特殊清理 */
+    s_imu_page_active = 0;
 }
 
 /*===========================================================================
@@ -313,64 +378,93 @@ static void ui_sync_control_values(void)
 {
     control_param_t *param = control_get_param();
 
-    s_ui_run_enable = (control_is_enabled() != 0);
-    s_ui_target_speed = control_get_target_speed();
     s_ui_steer_kp = (int16_t)param->steer_pid.kp;
     s_ui_steer_kd = (int16_t)param->steer_pid.kd;
     s_ui_speed_kp = (int16_t)param->speed_pid.kp;
     s_ui_speed_ki = (int16_t)param->speed_pid.ki;
 }
 
-static void ui_apply_run_enable(void)
+static void ui_show_state_action(void)
 {
-    if (s_ui_run_enable)
+    const char *state = "?";
+
+    switch (task_get_state())
     {
-        task_start();
-        astra_push_info_bar("RUN", 800);
-    }
-    else
-    {
-        task_stop();
-        astra_push_info_bar("STOP", 800);
+        case SYS_STATE_IDLE:    state = "IDLE";  break;
+        case SYS_STATE_READY:   state = "READY"; break;
+        case SYS_STATE_RUNNING: state = "RUN";   break;
+        case SYS_STATE_STOP:    state = "STOP";  break;
+        case SYS_STATE_ERROR:   state = "ERROR"; break;
+        default: break;
     }
 
-    ui_sync_control_values();
-}
-
-static void ui_apply_target_speed(void)
-{
-    control_set_target_speed(s_ui_target_speed);
-    s_ui_target_speed = control_get_target_speed();
-    astra_push_info_bar("SPEED OK", 800);
+    snprintf(s_task_status_text, sizeof(s_task_status_text),
+             "TASK %u %s",
+             task_get_competition_task(),
+             state);
+    astra_push_pop_up(s_task_status_text, 1000);
 }
 
 static void ui_apply_pid_values(void)
 {
     control_set_steer_pid((float)s_ui_steer_kp, PID_STEER_KI, (float)s_ui_steer_kd);
     control_set_speed_pid((float)s_ui_speed_kp, (float)s_ui_speed_ki, PID_SPEED_KD);
-    astra_push_info_bar("PID OK", 800);
+    astra_push_info_bar(control_save_tune_params() ? "SAVE ERR" : "PID SAVED", 800);
 }
 
-static void ui_reset_pid_action(void)
+static uint8 ui_task_id_from_item(astra_list_item_t *item)
 {
-    control_set_steer_pid(PID_STEER_KP, PID_STEER_KI, PID_STEER_KD);
-    control_set_speed_pid(PID_SPEED_KP, PID_SPEED_KI, PID_SPEED_KD);
-    control_reset();
-    ui_sync_control_values();
-    astra_push_info_bar("PID RESET", 800);
-}
-
-static void ui_show_state_action(void)
-{
-    switch (task_get_state())
+    while (item != NULL && item->parent != NULL && item->parent->parent != NULL)
     {
-        case SYS_STATE_IDLE:    astra_push_pop_up("STATE IDLE", 1000); break;
-        case SYS_STATE_READY:   astra_push_pop_up("STATE READY", 1000); break;
-        case SYS_STATE_RUNNING: astra_push_pop_up("STATE RUN", 1000); break;
-        case SYS_STATE_STOP:    astra_push_pop_up("STATE STOP", 1000); break;
-        case SYS_STATE_ERROR:   astra_push_pop_up("STATE ERROR", 1000); break;
-        default:                astra_push_pop_up("STATE ?", 1000); break;
+        item = item->parent;
     }
+
+    for (uint8 i = 0; i < COMPETITION_TASK_COUNT; i++)
+    {
+        if (item == s_task_item[i])
+            return (uint8)(i + 1U);
+    }
+
+    return 0;
+}
+
+static void ui_apply_competition_param(void)
+{
+    uint8 task_id = ui_task_id_from_item(astra_selector.selected_item);
+
+    if (task_id != 0U)
+    {
+        competition_task_param_t *param = task_get_competition_param(task_id);
+        if (task_get_competition_task() == task_id)
+            control_set_target_speed(param->speed);
+    }
+
+    astra_push_info_bar("TASK PARAM OK", 600);
+}
+
+static bool ui_start_selected_competition_task(void)
+{
+    uint8 task_id = 0;
+
+    for (uint8 i = 0; i < COMPETITION_TASK_COUNT; i++)
+    {
+        if (astra_selector.selected_item == s_task_item[i])
+        {
+            task_id = (uint8)(i + 1U);
+            break;
+        }
+    }
+
+    if (task_id == 0U)
+        return false;
+
+    if (task_get_state() == SYS_STATE_RUNNING)
+        task_stop();
+
+    task_set_competition_task(task_id);
+    task_start();
+    ui_show_state_action();
+    return true;
 }
 
 static void ui_push_item(astra_list_item_t *parent, astra_list_item_t *child)
@@ -380,12 +474,12 @@ static void ui_push_item(astra_list_item_t *parent, astra_list_item_t *child)
 }
 
 /*===========================================================================
- * UI 页面树构建（核心配置区）
+ * UI 页面树构建（比赛入口 + 通用设置）
  *=========================================================================*/
 
 /**
  * @brief 构建 Astra UI 的页面树
- * @note 根菜单优先放实际调车入口，控件展示页保留为 UI Demo。
+ * @note 根菜单只保留比赛 TASK 和 Setting，减少赛场误操作。
  */
 static void ui_build_astra_tree(void)
 {
@@ -397,30 +491,45 @@ static void ui_build_astra_tree(void)
 
     astra_list_item_t *root = astra_get_root_list();
 
-    astra_list_item_t *run_page   = astra_new_list_item("Run Control", power_icon);
-    astra_list_item_t *pid_page   = astra_new_list_item("PID Tune", slider_icon);
-    astra_list_item_t *uart_page  = astra_new_list_item("UART", switch_icon);
-    astra_list_item_t *imu_page   = astra_new_list_item("IMU Gyro", slider_icon);
-    astra_list_item_t *track_page = astra_new_list_item("Track Sensor", flag_icon);
+    astra_list_item_t *setting_page = astra_new_list_item("Setting", list_icon);
+    astra_list_item_t *pid_page     = astra_new_list_item("PID Tune", slider_icon);
+    astra_list_item_t *sensors_page = astra_new_list_item("Sensors", flag_icon);
+    astra_list_item_t *uart_page    = astra_new_list_item("UART", switch_icon);
+    astra_list_item_t *imu_page     = astra_new_list_item("IMU Gyro", slider_icon);
+    astra_list_item_t *track_page   = astra_new_list_item("Track Sensor", flag_icon);
 
-    ui_push_item(root, run_page);
-    ui_push_item(root, pid_page);
-    ui_push_item(root, uart_page);
-    ui_push_item(root, imu_page);
-    ui_push_item(root, track_page);
+    s_task_item[0] = astra_new_list_item("TASK: 1", flag_icon);
+    s_task_item[1] = astra_new_list_item("TASK: 2", flag_icon);
+    s_task_item[2] = astra_new_list_item("TASK: 3", flag_icon);
+    s_task_item[3] = astra_new_list_item("TASK: 4", flag_icon);
 
-    /* ===== Run Control ===== */
-    ui_push_item(run_page,
-        astra_new_switch_item("Run Enable", &s_ui_run_enable,
-                              ui_sync_control_values, ui_apply_run_enable, power_icon));
-    ui_push_item(run_page,
-        astra_new_slider_item("Target Speed", &s_ui_target_speed,
-                              TARGET_SPEED_STEP, 0, TARGET_SPEED_MAX,
-                              ui_sync_control_values, ui_apply_target_speed, slider_icon));
-    ui_push_item(run_page,
-        astra_new_button_item("Show State", ui_show_state_action, flag_icon));
-    ui_push_item(run_page,
-        astra_new_button_item("Reset PID", ui_reset_pid_action, plus_icon));
+    for (uint8 i = 0; i < COMPETITION_TASK_COUNT; i++)
+    {
+        competition_task_param_t *param = task_get_competition_param((uint8)(i + 1U));
+
+        ui_push_item(root, s_task_item[i]);
+        ui_push_item(s_task_item[i],
+            astra_new_slider_item("Speed", &param->speed,
+                                  TARGET_SPEED_STEP, 0, TARGET_SPEED_MAX,
+                                  NULL, ui_apply_competition_param, slider_icon));
+        ui_push_item(s_task_item[i],
+            astra_new_slider_item("Parameter 1", &param->parameter1,
+                                  1, -1000, 1000,
+                                  NULL, ui_apply_competition_param, slider_icon));
+        ui_push_item(s_task_item[i],
+            astra_new_slider_item("Parameter 2", &param->parameter2,
+                                  1, -1000, 1000,
+                                  NULL, ui_apply_competition_param, slider_icon));
+        ui_push_item(s_task_item[i],
+            astra_new_slider_item("Parameter 3", &param->parameter3,
+                                  1, -1000, 1000,
+                                  NULL, ui_apply_competition_param, slider_icon));
+    }
+
+    ui_push_item(root, setting_page);
+    ui_push_item(setting_page, pid_page);
+    ui_push_item(setting_page, sensors_page);
+    ui_push_item(setting_page, uart_page);
 
     /* ===== PID Tune ===== */
     ui_push_item(pid_page,
@@ -435,6 +544,10 @@ static void ui_build_astra_tree(void)
     ui_push_item(pid_page,
         astra_new_slider_item("Speed KI", &s_ui_speed_ki,
                               1, 0, 60, ui_sync_control_values, ui_apply_pid_values, slider_icon));
+
+    /* ===== Sensors ===== */
+    ui_push_item(sensors_page, track_page);
+    ui_push_item(sensors_page, imu_page);
 
     /* ===== UART — 4开关，KEY2长按进详情 ===== */
     astra_list_item_t *u0 = astra_new_switch_item("UART0", &s_uart_en[0], ui_u0_in, ui_u0_sw, switch_icon);
@@ -474,6 +587,13 @@ static void ui_build_astra_tree(void)
  */
 void app_ui_handle_key(bsp_key_id_enum key, uint8 pressed, bsp_key_event_enum event, uint32 now_ms)
 {
+#if !LCD_ENABLE
+    (void)key;
+    (void)pressed;
+    (void)event;
+    (void)now_ms;
+    return;
+#else
     (void)pressed;
     (void)now_ms;
 
@@ -481,11 +601,21 @@ void app_ui_handle_key(bsp_key_id_enum key, uint8 pressed, bsp_key_event_enum ev
     {
         switch (key)
         {
-            case BSP_KEY_1:  /* KEY1 单击 → 下一个选项 */
-                astra_selector_go_next_item();
+            case BSP_KEY_1:  /* KEY1 单击 */
+                if (s_imu_page_active)
+                {
+                    /* 在 IMU 页面短按 KEY1：归零 RPY */
+                    ui_imu_zero_rpy();
+                }
+                else
+                {
+                    /* 其他页面：下一个选项 */
+                    astra_selector_go_next_item();
+                }
                 break;
             case BSP_KEY_2:  /* KEY2 单击 → 进入/确认 */
-                astra_selector_jump_to_selected_item();
+                if (!ui_start_selected_competition_task())
+                    astra_selector_jump_to_selected_item();
                 break;
             case BSP_KEY_3:  /* KEY3 单击 → 上一个选项 */
                 astra_selector_go_prev_item();
@@ -512,6 +642,7 @@ void app_ui_handle_key(bsp_key_id_enum key, uint8 pressed, bsp_key_event_enum ev
             default: break;
         }
     }
+#endif
 }
 
 /*===========================================================================
@@ -526,7 +657,7 @@ static const char *ui_custom_title(astra_list_item_t *parent)
 {
     /* 根菜单 / 无父节点 → 自定义根标题 */
     if (parent == NULL || parent->layer == 0)
-        return "小车调试";
+        return "2026 电·赛!";
 
     /* 子菜单标题：根据父节点 content 映射更多样化的显示名。
      * 此处可直接改字符串，也可用 if/switch 按菜单分支返回不同文字。 */
@@ -538,6 +669,10 @@ static const char *ui_custom_title(astra_list_item_t *parent)
  */
 void app_ui_init(void)
 {
+#if !LCD_ENABLE
+    in_astra = false;
+    return;
+#else
     astra_ui_driver_init();
 
     /* 注册标题回调 — 在 build tree 之前设置 */
@@ -554,7 +689,8 @@ void app_ui_init(void)
     ui_build_astra_tree();
     in_astra = true;
     astra_init_core();
-    astra_push_info_bar("2026 Dian_Sai_Demo", 800);
+    astra_push_info_bar("2026 电·赛", 800);
+#endif
 }
 
 /**
@@ -562,6 +698,9 @@ void app_ui_init(void)
  */
 void app_ui_task(void)
 {
+#if !LCD_ENABLE
+    return;
+#else
     /* 仅在当前处于 Astra UI 模式时才刷新屏幕。
      * 用户可通过 ALLOW_EXIT_ASTRA_UI_BY_USER 退出 UI，
      * 退出后不再清屏和绘制，恢复外部显示内容。 */
@@ -572,4 +711,5 @@ void app_ui_task(void)
     astra_ui_widget_core();
     oled_send_buffer();
     astra_draw_color_overlay();
+#endif
 }

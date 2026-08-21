@@ -105,24 +105,7 @@ targets:
     uploadConfigMap:
       OpenOCD:
         baseAddr: "0x00000000"
-        bin: ${ExecutableName}.bin
+        bin: ${ExecutableName}.hex
         interface: cmsis-dap
         target: ti/mspm0
-      STLink:
-        address: "0x08000000"
-        bin: ""
-        elFile: None
-        optionBytes: .eide/debug.st.option.bytes.ini
-        otherCmds: ""
-        proType: SWD
-        resetMode: default
-        runAfterProgram: true
-        speed: 4000
-      pyOCD:
-        baseAddr: "0x08000000"
-        bin: ""
-        config: .eide/debug.pyocd.yaml
-        otherCmds: ""
-        speed: 4M
-        targetName: mspm0g3507
-    uploader: pyOCD
+    uploader: OpenOCD

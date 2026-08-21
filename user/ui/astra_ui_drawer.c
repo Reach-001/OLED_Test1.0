@@ -255,7 +255,7 @@ void astra_draw_pop_up()
 
   if (astra_pop_up.time - astra_pop_up.time_start >= astra_pop_up.span)
   {
-    astra_pop_up.y_pop_up_trg = 0 - 2 * POP_UP_HEIGHT;
+    astra_pop_up.y_pop_up_trg = POP_UP_INIT_Y;
     if (astra_pop_up.y_pop_up == astra_pop_up.y_pop_up_trg)
       astra_pop_up.is_running = false;
   }

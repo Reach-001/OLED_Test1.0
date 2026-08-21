@@ -1,7 +1,7 @@
 /*********************************************************************************************************************
 * 文件名称          zf_device_bno085
 * 适用平台          MSPM0G3507
-* 备注              BNO085 软件 IIC 驱动，数据协议为 SHTP，不是普通寄存器读写。
+* 备注              BNO085 IIC 驱动，数据协议为 SHTP，不是普通寄存器读写。
 ********************************************************************************************************************/
 
 #ifndef _zf_device_bno085_h_
@@ -42,6 +42,29 @@ typedef struct
     int32 pitch_md;
     int32 yaw_md;
     uint8 quat_accuracy;
+
+    /* 加速度计（原始 Q8 值 + 精度） */
+    int16 accel_raw_x;
+    int16 accel_raw_y;
+    int16 accel_raw_z;
+    uint8 accel_accuracy;
+
+    /* 线性加速度计（去除重力，原始 Q8 值 + 精度） */
+    int16 lin_accel_raw_x;
+    int16 lin_accel_raw_y;
+    int16 lin_accel_raw_z;
+    uint8 lin_accel_accuracy;
+
+    /* 磁力计（原始 Q4 值 + 精度） */
+    int16 mag_raw_x;
+    int16 mag_raw_y;
+    int16 mag_raw_z;
+    uint8 mag_accuracy;
+
+    /* 计步与姿态分类 */
+    uint32 step_count;
+    uint8 stability_classifier;
+    uint8 activity_classifier;
 } bno085_imu_data_t;
 
 uint8 bno085_init(void);
@@ -52,6 +75,12 @@ uint8 bno085_get_last_error(void);
 uint32 bno085_get_rx_count(void);
 uint32 bno085_get_gyro_update_count(void);
 uint32 bno085_get_quat_update_count(void);
+uint32 bno085_get_accel_update_count(void);
+uint32 bno085_get_lin_accel_update_count(void);
+uint32 bno085_get_mag_update_count(void);
+uint32 bno085_get_step_update_count(void);
+uint32 bno085_get_stability_update_count(void);
+uint32 bno085_get_activity_update_count(void);
 const bno085_imu_data_t *bno085_get_imu_data(void);
 
 #endif

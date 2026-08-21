@@ -105,6 +105,12 @@ void control_set_speed_pid(float kp, float ki, float kd);
 control_param_t* control_get_param(void);
 
 /**
+ * @brief   保存滑条调参值到 Flash
+ * @return  uint8   0=成功, 1=失败
+ */
+uint8 control_save_tune_params(void);
+
+/**
  * @brief   重置 PID 积分和状态
  */
 void control_reset(void);

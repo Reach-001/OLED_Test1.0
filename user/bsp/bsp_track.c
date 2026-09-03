@@ -8,6 +8,10 @@
 
 static soft_iic_info_struct s_ads7830_bus;
 static uint8 s_ads7830_ready = 0;
+static uint32 s_step_sum = 0;
+static uint8 s_step_channel = 0;
+static uint8 s_step_sample_count = 0;
+static uint8 s_step_fail_skip = 0;
 
 #if BNO085_ENABLE && BNO085_USE_SOFT_IIC
 _Static_assert((ADS7830_SCL_PIN != BNO085_SCL_PIN) && (ADS7830_SDA_PIN != BNO085_SDA_PIN),
@@ -54,7 +58,10 @@ void track_read_raw(track_data_t *data)
             uint8 value = 0;
 
             if ((s_ads7830_ready != 0U) &&
-                (ads7830_read_single_default(&s_ads7830_bus, i, &value) == ADS7830_STATUS_OK))
+                (ads7830_read_single(&s_ads7830_bus,
+                                     i,
+                                     TRACK_ADS7830_POWER_MODE,
+                                     &value) == ADS7830_STATUS_OK))
             {
                 sum += value;
                 valid_count++;
@@ -77,6 +84,63 @@ void track_read(track_data_t *data)
     {
         /* 大于阈值为黑线 (具体逻辑根据传感器类型调整) */
         data->digital[i] = (data->raw[i] > s_threshold) ? 1 : 0;
+    }
+}
+
+/*-----------------------------------------------------------
+ * 分时读取传感器数据
+ *-----------------------------------------------------------*/
+void track_update_step(track_data_t *data)
+{
+    uint8 value = 0;
+
+    if (data == NULL)
+    {
+        return;
+    }
+
+    if (s_ads7830_ready == 0U)
+    {
+        if (s_step_fail_skip > 0U)
+        {
+            s_step_fail_skip--;
+            return;
+        }
+
+        s_ads7830_ready = (ads7830_is_ready(&s_ads7830_bus) == ADS7830_STATUS_OK) ? 1U : 0U;
+        if (s_ads7830_ready == 0U)
+        {
+            s_step_fail_skip = 20U;
+            return;
+        }
+    }
+
+    if (ads7830_read_single(&s_ads7830_bus,
+                            s_step_channel,
+                            TRACK_ADS7830_POWER_MODE,
+                            &value) != ADS7830_STATUS_OK)
+    {
+        s_ads7830_ready = 0U;
+        s_step_sum = 0U;
+        s_step_sample_count = 0U;
+        data->raw[s_step_channel] = 0U;
+        data->digital[s_step_channel] = 0U;
+        s_step_channel = (uint8)((s_step_channel + 1U) % TRACK_SENSOR_NUM);
+        s_step_fail_skip = 20U;
+        return;
+    }
+
+    s_step_sum += value;
+    s_step_sample_count++;
+
+    if (s_step_sample_count >= TRACK_ADS7830_FILTER_COUNT)
+    {
+        data->raw[s_step_channel] = (uint16)(s_step_sum / TRACK_ADS7830_FILTER_COUNT);
+        data->digital[s_step_channel] = (data->raw[s_step_channel] > s_threshold) ? 1U : 0U;
+
+        s_step_sum = 0U;
+        s_step_sample_count = 0U;
+        s_step_channel = (uint8)((s_step_channel + 1U) % TRACK_SENSOR_NUM);
     }
 }
 

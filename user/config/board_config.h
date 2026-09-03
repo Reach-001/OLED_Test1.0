@@ -93,6 +93,7 @@
 #define ADS7830_SCL_PIN         B24
 #define ADS7830_SDA_PIN         B25
 #define ADS7830_SOFT_IIC_DELAY  80
+#define TRACK_ADS7830_POWER_MODE ADS7830_INTERNAL_REF_OFF_ADC_ON
 #define TRACK_ADS7830_THRESHOLD 128
 
 /*===========================================================================

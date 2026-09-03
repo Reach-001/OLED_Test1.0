@@ -305,6 +305,23 @@ static uint16_t ui_track_adc_max(void)
     return 255U;
 }
 
+static void ui_track_draw_centered_ascii(uint16_t x, uint16_t w, uint16_t y, const char *text)
+{
+    int16_t text_w = oled_get_str_width(text);
+    int16_t text_x = (int16_t)x + ((int16_t)w - text_w) / 2;
+
+    if (text_x < 0)
+    {
+        text_x = 0;
+    }
+    else if ((text_x + text_w) > OLED_WIDTH)
+    {
+        text_x = OLED_WIDTH - text_w;
+    }
+
+    oled_draw_str(text_x, y, text);
+}
+
 static void ui_track_init(void)
 {
     /* 进入页面时无需特殊操作 */
@@ -323,6 +340,8 @@ static void ui_track_loop(void)
     oled_set_draw_color(UI_COLOR_WHITE);
     oled_draw_UTF8(8, 18, "Track ADC");
 
+    st7789_set_font((const void *)&font_8x16);
+
     oled_set_draw_color(UI_COLOR_GRAY);
     char _range[24] = {};
     snprintf(_range, sizeof(_range), "MAX:%u TH:%u",
@@ -334,8 +353,9 @@ static void ui_track_loop(void)
     uint16_t bar_area_w = OLED_WIDTH - 16;
     uint16_t bar_w      = bar_area_w / TRACK_SENSOR_NUM - 4;
     uint16_t bar_max_h  = 54;
-    uint16_t bar_top_y  = 32;
-    uint16_t label_y    = bar_top_y + bar_max_h + 8;
+    uint16_t bar_top_y  = 28;
+    uint16_t label_y    = bar_top_y + bar_max_h + 18;
+    uint16_t value_y    = label_y + 16;
     uint16_t th_h       = (uint16_t)((uint32_t)threshold * bar_max_h / adc_max);
 
     if (th_h > bar_max_h)
@@ -382,14 +402,12 @@ static void ui_track_loop(void)
 
         oled_set_draw_color(UI_COLOR_GRAY);
         char _lbl[4] = {};
-        snprintf(_lbl, sizeof(_lbl), "S%d", i + 1);
-        int16_t lw = oled_get_str_width(_lbl);
-        oled_draw_str(bx + (bar_w - lw) / 2, label_y + 8, _lbl);
+        snprintf(_lbl, sizeof(_lbl), "%d", i);
+        ui_track_draw_centered_ascii(bx, bar_w, label_y, _lbl);
 
         snprintf(_val, sizeof(_val), "%u", (unsigned int)td->raw[i]);
         oled_set_draw_color(td->digital[i] ? UI_COLOR_MINT : UI_COLOR_WHITE);
-        lw = oled_get_str_width(_val);
-        oled_draw_str(bx + (bar_w - lw) / 2, label_y + 24, _val);
+        ui_track_draw_centered_ascii(bx, bar_w, value_y, _val);
     }
 
     /* ---- 底部状态 ---- */
@@ -405,6 +423,8 @@ static void ui_track_loop(void)
              track_is_lost(td_mut),
              track_is_cross(td_mut));
     oled_draw_UTF8(8, OLED_HEIGHT - 6, _st);
+
+    st7789_set_font(astra_default_font);
 }
 
 static void ui_track_exit(void)

@@ -42,6 +42,14 @@ void track_read_raw(track_data_t *data);
 void track_read(track_data_t *data);
 
 /**
+ * @brief   分时采样循迹传感器
+ * @param   data    数据结构指针
+ *
+ * 每次调用只访问一个 ADS7830 通道一次，避免一次性读完 8 路导致主循环长时间阻塞。
+ */
+void track_update_step(track_data_t *data);
+
+/**
  * @brief   计算循迹偏差 (加权算法)
  * @param   data    传感器数据
  * @return  int16   偏差值 [-100, +100]

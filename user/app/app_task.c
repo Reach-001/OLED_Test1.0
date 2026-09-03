@@ -170,8 +170,8 @@ void task_init(void)
 void task_track(void)
 {
 #if TRACK_ENABLE
-    /* 读取循迹传感器 */
-    track_read(&s_track_data);
+    /* 运行期分时采样，避免一次性读取 8 路 ADS7830 阻塞主循环。 */
+    track_update_step(&s_track_data);
 #else
     memset(&s_track_data, 0, sizeof(s_track_data));
 #endif

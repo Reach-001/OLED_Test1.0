@@ -124,13 +124,6 @@ int main(void)
          * 任务函数中不要写长时间阻塞，否则其他任务会被拖慢。
          */
 
-        /* 循迹采样任务 */
-        if (g_task_flag.track)
-        {
-            g_task_flag.track = 0;
-            task_track();
-        }
-
         /* 控制计算任务 */
         if (g_task_flag.control)
         {
@@ -170,6 +163,13 @@ int main(void)
         {
             g_task_flag.display = 0;
             task_display();
+        }
+
+        /* 循迹采样任务放在最后：软 IIC 为阻塞式位操作，避免拖慢控制、按键和 UI。 */
+        if (g_task_flag.track)
+        {
+            g_task_flag.track = 0;
+            task_track();
         }
     }
 }
